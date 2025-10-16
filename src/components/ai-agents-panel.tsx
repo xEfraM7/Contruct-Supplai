@@ -32,14 +32,6 @@ export function AIAgentsPanel() {
         </CardHeader>
         <CardContent>
           <div className="flex gap-4">
-            <Input
-              placeholder="Agent name (e.g., RFI Assistant)"
-              className="flex-1 bg-background border-border text-foreground"
-            />
-            <Input
-              placeholder="Agent role (e.g., Follow-up calls)"
-              className="flex-1 bg-background border-border text-foreground"
-            />
             <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
               <Plus className="w-4 h-4 mr-2" />
               Create Agent
