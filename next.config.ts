@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  experimental: {
+    // Aumentar el límite de body para todas las rutas API
+    serverActions: {
+      bodySizeLimit: '25mb',
+    },
+  },
 };
 
 export default nextConfig;
