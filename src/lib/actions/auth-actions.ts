@@ -1,73 +1,70 @@
 "use server";
 
-import { headers } from "next/headers";
-import { auth } from "../auth";
+import { createSupabaseServerClient } from "../supabase/server";
 
 export const signUp = async (email: string, password: string, name: string) => {
-  try {
-    const result = await auth.api.signUpEmail({
-      body: {
-        email,
-        password,
-        name,
-        callbackURL: "/overview",
-      },
-      headers: await headers(),
-    });
+  const supabase = await createSupabaseServerClient();
 
-    return { success: true, data: result };
-  } catch (error: any) {
-    return { 
-      success: false, 
-      error: error?.message || "Error al registrarse" 
-    };
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { name },
+    },
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
   }
+
+  return { success: true, data };
 };
 
-export const signIn = async (email: string, password: string, rememberMe: boolean = false) => {
-  try {
-    const result = await auth.api.signInEmail({
-      body: {
-        email,
-        password,
-        callbackURL: "/overview",
-        rememberMe,
-      },
-      headers: await headers(),
-    });
+export const signIn = async (email: string, password: string) => {
+  const supabase = await createSupabaseServerClient();
 
-    return { success: true, data: result };
-  } catch (error: any) {
-    return { 
-      success: false, 
-      error: error?.message || "Credenciales incorrectas" 
-    };
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
   }
+
+  return { success: true, data };
 };
 
 export const signOut = async () => {
-  const result = await auth.api.signOut({
-    headers: await headers(),
-  });
+  const supabase = await createSupabaseServerClient();
 
-  return result;
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
 };
 
 export const signInWithGoogle = async () => {
-  try {
-    const result = await auth.api.signInSocial({
-      body: {
-        provider: "google",
-        callbackURL: "/overview",
-      },
-      headers: await headers(),
-    });
+  const supabase = await createSupabaseServerClient();
 
-    return { success: true, data: result };
-  } catch (error: any) {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/auth/callback`,
+    },
+  });
+
+  if (error) {
     return {
       success: false,
-      error: error?.message || "Error al iniciar sesión con Google",
+      error: error.message,
     };
   }
+
+  return {
+    success: true,
+    data,
+  };
 };
