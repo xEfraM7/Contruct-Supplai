@@ -9,12 +9,18 @@ import { Upload, AlertTriangle, FileQuestion } from "lucide-react";
 const menuItems = ["Jobs", "Discrepancies", "RFIs"];
 
 const jobCategories = [
-  "Windows",
-  "Drywall",
-  "Roofing",
-  "Plumbing",
   "Electrical",
+  "Concrete",
+  "Roofing",
+  "Steel",
+  "Plumbing",
+  "Framing",
+  "Flooring",
+  "Glazing",
   "HVAC",
+  "Drywall",
+  "Masonry",
+  "Doors and Windows",
 ];
 
 interface AnalysisResult {

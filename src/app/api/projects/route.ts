@@ -1,70 +1,133 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { prisma } from "@/lib/prisma";
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
 
-export async function POST(req: NextRequest) {
+export async function GET() {
   try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
+    const cookieStore = await cookies();
 
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
+
+    // Obtener el usuario actual
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'No autenticado' },
+        { status: 401 }
+      );
     }
 
-    const body = await req.json();
-    const { name, address } = body;
+    // Obtener proyectos del usuario
+    const { data: projects, error } = await supabase
+      .from('project')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
 
-    if (!name || !address) {
+    if (error) {
       return NextResponse.json(
-        { error: "Name and address are required" },
+        { success: false, error: error.message },
         { status: 400 }
       );
     }
 
-    const project = await prisma.project.create({
-      data: {
-        name,
-        address,
-        userId: session.user.id,
-      },
+    return NextResponse.json({
+      success: true,
+      projects: projects.map(p => ({
+        id: p.id,
+        name: p.name,
+        address: p.address,
+        createdAt: p.created_at,
+        updatedAt: p.updated_at,
+      })),
     });
-
-    return NextResponse.json({ project }, { status: 201 });
   } catch (error) {
-    console.error("Error creating project:", error);
     return NextResponse.json(
-      { error: "Failed to create project" },
+      { success: false, error: 'Error al obtener proyectos' },
       { status: 500 }
     );
   }
 }
 
-export async function GET(req: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
+    const { name, address } = await request.json();
+    const cookieStore = await cookies();
 
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
+
+    // Obtener el usuario actual
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'No autenticado' },
+        { status: 401 }
+      );
     }
 
-    const projects = await prisma.project.findMany({
-      where: {
-        userId: session.user.id,
-      },
-      orderBy: {
-        createdAt: "desc",
+    // Crear proyecto
+    const { data: project, error } = await supabase
+      .from('project')
+      .insert({
+        name,
+        address,
+        user_id: user.id,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      project: {
+        id: project.id,
+        name: project.name,
+        address: project.address,
+        createdAt: project.created_at,
+        updatedAt: project.updated_at,
       },
     });
-
-    return NextResponse.json({ projects }, { status: 200 });
   } catch (error) {
-    console.error("Error fetching projects:", error);
     return NextResponse.json(
-      { error: "Failed to fetch projects" },
+      { success: false, error: 'Error al crear proyecto' },
       { status: 500 }
     );
   }

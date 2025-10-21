@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { signIn, signUp, signInWithGoogle } from "@/lib/actions/auth-actions";
+import { signInWithGoogle } from "@/lib/actions/auth-actions";
 import { loginSchema, registerSchema } from "@/lib/validations/auth";
 import { ZodError } from "zod";
 
@@ -54,15 +54,19 @@ export function LoginFormComponent() {
       if (isLogin) {
         const validatedData = loginSchema.parse({ email, password });
 
-        const result = await signIn(
-          validatedData.email,
-          validatedData.password,
-          rememberMe
-        );
+        const response = await fetch('/api/auth/signin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: validatedData.email,
+            password: validatedData.password,
+          }),
+        });
+
+        const result = await response.json();
 
         if (result.success) {
-          router.push("/");
-          router.refresh();
+          window.location.href = "/overview";
         } else {
           setErrors({ general: result.error || "Credenciales incorrectas" });
         }
@@ -74,15 +78,20 @@ export function LoginFormComponent() {
           confirmPassword,
         });
 
-        const result = await signUp(
-          validatedData.email,
-          validatedData.password,
-          validatedData.name
-        );
+        const response = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: validatedData.email,
+            password: validatedData.password,
+            name: validatedData.name,
+          }),
+        });
+
+        const result = await response.json();
 
         if (result.success) {
-          router.push("/");
-          router.refresh();
+          window.location.href = "/overview";
         } else {
           setErrors({ general: result.error || "Error al registrarse" });
         }

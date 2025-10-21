@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { ChevronUp, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { signOut } from "@/lib/actions/auth-actions";
+
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 interface User {
   name: string;
@@ -18,25 +19,33 @@ export function UserProfile() {
   const router = useRouter();
 
   useEffect(() => {
-    // Obtener datos del usuario desde Better Auth
+    const supabase = createClient();
+    
+    // Obtener datos del usuario desde Supabase
     const getSession = async () => {
       try {
-        const res = await fetch("/api/auth/get-session", {
-          method: "GET",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
+        // Intentar obtener la sesión con reintentos
+        let session = null;
+        let attempts = 0;
+        const maxAttempts = 5;
         
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.user) {
-            setUser({
-              name: data.user.name || "Usuario",
-              email: data.user.email || "",
-            });
+        while (!session && attempts < maxAttempts) {
+          const { data } = await supabase.auth.getSession();
+          session = data.session;
+          
+          if (!session && attempts < maxAttempts - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500));
           }
+          attempts++;
+        }
+        
+        if (session?.user) {
+          setUser({
+            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || "Usuario",
+            email: session.user.email || "",
+          });
+        } else {
+          window.location.href = '/login';
         }
       } catch (err) {
         console.error("Error obteniendo sesión:", err);
@@ -46,12 +55,31 @@ export function UserProfile() {
     };
 
     getSession();
+
+    // Escuchar cambios en la autenticación
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser({
+          name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || "Usuario",
+          email: session.user.email || "",
+        });
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleSignOut = async () => {
-    await signOut();
-    router.push("/login");
-    router.refresh();
+    try {
+      await fetch('/api/auth/signout', { method: 'POST' });
+      window.location.href = "/login";
+    } catch (err) {
+      console.error("Error al cerrar sesión:", err);
+    }
   };
 
   const getInitials = (name: string) => {
