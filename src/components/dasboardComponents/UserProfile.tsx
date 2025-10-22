@@ -40,8 +40,20 @@ export function UserProfile() {
         }
         
         if (session?.user) {
+          // Intentar obtener el nombre desde user_settings primero
+          const { data: settings } = await supabase
+            .from('user_settings')
+            .select('company_name')
+            .eq('user_id', session.user.id)
+            .single();
+
+          const displayName = settings?.company_name || 
+                             session.user.user_metadata?.name || 
+                             session.user.email?.split('@')[0] || 
+                             "Usuario";
+
           setUser({
-            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || "Usuario",
+            name: displayName,
             email: session.user.email || "",
           });
         } else {
@@ -57,10 +69,22 @@ export function UserProfile() {
     getSession();
 
     // Escuchar cambios en la autenticación
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
+        // Recargar desde user_settings
+        const { data: settings } = await supabase
+          .from('user_settings')
+          .select('company_name')
+          .eq('user_id', session.user.id)
+          .single();
+
+        const displayName = settings?.company_name || 
+                           session.user.user_metadata?.name || 
+                           session.user.email?.split('@')[0] || 
+                           "Usuario";
+
         setUser({
-          name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || "Usuario",
+          name: displayName,
           email: session.user.email || "",
         });
       } else {

@@ -2,10 +2,19 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const cookieStore = await cookies();
+    const { searchParams } = new URL(request.url);
+    const blueprintId = searchParams.get('blueprint_id');
 
+    if (!blueprintId) {
+      return NextResponse.json(
+        { success: false, error: 'Blueprint ID is required' },
+        { status: 400 }
+      );
+    }
+
+    const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -23,7 +32,6 @@ export async function GET() {
       }
     );
 
-    // Obtener el usuario actual
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
@@ -33,10 +41,10 @@ export async function GET() {
       );
     }
 
-    // Obtener proyectos del usuario
-    const { data: projects, error } = await supabase
-      .from('project')
+    const { data: analyses, error } = await supabase
+      .from('blueprint_analyses')
       .select('*')
+      .eq('blueprint_id', blueprintId)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
@@ -49,23 +57,18 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      projects: projects.map(p => ({
-        id: p.id,
-        name: p.name,
-        clientName: p.client_name,
-        address: p.address,
-        clientPhone: p.client_phone,
-        clientEmail: p.client_email,
-        startDate: p.start_date,
-        estimatedBudget: p.estimated_budget,
-        description: p.description,
-        createdAt: p.created_at,
-        updatedAt: p.updated_at,
+      analyses: analyses.map(a => ({
+        id: a.id,
+        blueprintId: a.blueprint_id,
+        category: a.category,
+        prompt: a.prompt,
+        result: a.result,
+        createdAt: a.created_at,
       })),
     });
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: 'Error al obtener proyectos' },
+      { success: false, error: 'Error al obtener análisis' },
       { status: 500 }
     );
   }
@@ -73,18 +76,16 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { 
-      name, 
-      client_name, 
-      address, 
-      client_phone, 
-      client_email, 
-      start_date, 
-      estimated_budget, 
-      description 
-    } = await request.json();
-    const cookieStore = await cookies();
+    const { blueprint_id, category, prompt, result } = await request.json();
 
+    if (!blueprint_id || !prompt || !result) {
+      return NextResponse.json(
+        { success: false, error: 'Blueprint ID, prompt and result are required' },
+        { status: 400 }
+      );
+    }
+
+    const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -102,7 +103,6 @@ export async function POST(request: Request) {
       }
     );
 
-    // Obtener el usuario actual
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
@@ -112,43 +112,39 @@ export async function POST(request: Request) {
       );
     }
 
-    // Crear proyecto
-    const { data: project, error } = await supabase
-      .from('project')
+    const { data: analysis, error: dbError } = await supabase
+      .from('blueprint_analyses')
       .insert({
-        name,
-        client_name,
-        address,
-        client_phone,
-        client_email,
-        start_date,
-        estimated_budget,
-        description,
+        blueprint_id,
         user_id: user.id,
+        category,
+        prompt,
+        result,
       })
       .select()
       .single();
 
-    if (error) {
+    if (dbError) {
       return NextResponse.json(
-        { success: false, error: error.message },
+        { success: false, error: dbError.message },
         { status: 400 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      project: {
-        id: project.id,
-        name: project.name,
-        address: project.address,
-        createdAt: project.created_at,
-        updatedAt: project.updated_at,
+      analysis: {
+        id: analysis.id,
+        blueprintId: analysis.blueprint_id,
+        category: analysis.category,
+        prompt: analysis.prompt,
+        result: analysis.result,
+        createdAt: analysis.created_at,
       },
     });
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: 'Error al crear proyecto' },
+      { success: false, error: 'Error al guardar análisis' },
       { status: 500 }
     );
   }

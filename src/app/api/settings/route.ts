@@ -23,7 +23,6 @@ export async function GET() {
       }
     );
 
-    // Obtener el usuario actual
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
@@ -33,14 +32,13 @@ export async function GET() {
       );
     }
 
-    // Obtener proyectos del usuario
-    const { data: projects, error } = await supabase
-      .from('project')
+    const { data: settings, error } = await supabase
+      .from('user_settings')
       .select('*')
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+      .single();
 
-    if (error) {
+    if (error && error.code !== 'PGRST116') {
       return NextResponse.json(
         { success: false, error: error.message },
         { status: 400 }
@@ -49,23 +47,15 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      projects: projects.map(p => ({
-        id: p.id,
-        name: p.name,
-        clientName: p.client_name,
-        address: p.address,
-        clientPhone: p.client_phone,
-        clientEmail: p.client_email,
-        startDate: p.start_date,
-        estimatedBudget: p.estimated_budget,
-        description: p.description,
-        createdAt: p.created_at,
-        updatedAt: p.updated_at,
-      })),
+      settings: settings || null,
+      user: {
+        email: user.email,
+        user_metadata: user.user_metadata,
+      },
     });
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: 'Error al obtener proyectos' },
+      { success: false, error: 'Error al obtener configuración' },
       { status: 500 }
     );
   }
@@ -73,16 +63,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { 
-      name, 
-      client_name, 
-      address, 
-      client_phone, 
-      client_email, 
-      start_date, 
-      estimated_budget, 
-      description 
-    } = await request.json();
+    const { company_name, license_number, phone_number, email } = await request.json();
     const cookieStore = await cookies();
 
     const supabase = createServerClient(
@@ -102,7 +83,6 @@ export async function POST(request: Request) {
       }
     );
 
-    // Obtener el usuario actual
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
@@ -112,43 +92,63 @@ export async function POST(request: Request) {
       );
     }
 
-    // Crear proyecto
-    const { data: project, error } = await supabase
-      .from('project')
-      .insert({
-        name,
-        client_name,
-        address,
-        client_phone,
-        client_email,
-        start_date,
-        estimated_budget,
-        description,
-        user_id: user.id,
-      })
-      .select()
+    // Intentar actualizar primero
+    const { data: existing } = await supabase
+      .from('user_settings')
+      .select('id')
+      .eq('user_id', user.id)
       .single();
 
-    if (error) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: 400 }
-      );
+    if (existing) {
+      // Actualizar
+      const { error } = await supabase
+        .from('user_settings')
+        .update({
+          company_name,
+          license_number,
+          phone_number,
+          email,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', user.id);
+
+      if (error) {
+        return NextResponse.json(
+          { success: false, error: error.message },
+          { status: 400 }
+        );
+      }
+    } else {
+      // Insertar
+      const { error } = await supabase
+        .from('user_settings')
+        .insert({
+          user_id: user.id,
+          company_name,
+          license_number,
+          phone_number,
+          email,
+        });
+
+      if (error) {
+        return NextResponse.json(
+          { success: false, error: error.message },
+          { status: 400 }
+        );
+      }
     }
 
-    return NextResponse.json({
-      success: true,
-      project: {
-        id: project.id,
-        name: project.name,
-        address: project.address,
-        createdAt: project.created_at,
-        updatedAt: project.updated_at,
-      },
-    });
+    // Actualizar el user_metadata con el nuevo company name
+    if (company_name) {
+      await supabase.auth.updateUser({
+        data: { name: company_name }
+      });
+    }
+
+    return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: 'Error al crear proyecto' },
+      { success: false, error: 'Error al guardar configuración' },
       { status: 500 }
     );
   }
