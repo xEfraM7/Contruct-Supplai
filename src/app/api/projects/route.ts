@@ -57,8 +57,12 @@ export async function GET() {
         clientPhone: p.client_phone,
         clientEmail: p.client_email,
         startDate: p.start_date,
+        estimatedEndDate: p.estimated_end_date,
         estimatedBudget: p.estimated_budget,
         description: p.description,
+        status: p.status,
+        completionPercentage: p.completion_percentage,
+        actualEndDate: p.actual_end_date,
         createdAt: p.created_at,
         updatedAt: p.updated_at,
       })),
@@ -80,6 +84,7 @@ export async function POST(request: Request) {
       client_phone, 
       client_email, 
       start_date, 
+      estimated_end_date,
       estimated_budget, 
       description 
     } = await request.json();
@@ -122,6 +127,7 @@ export async function POST(request: Request) {
         client_phone,
         client_email,
         start_date,
+        estimated_end_date,
         estimated_budget,
         description,
         user_id: user.id,

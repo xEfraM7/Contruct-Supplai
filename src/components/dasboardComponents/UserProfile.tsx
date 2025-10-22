@@ -4,9 +4,6 @@ import { useEffect, useState } from "react";
 import { ChevronUp, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-
 interface User {
   name: string;
   email: string;
@@ -16,90 +13,52 @@ export function UserProfile() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
 
   useEffect(() => {
-    const supabase = createClient();
-    
-    // Obtener datos del usuario desde Supabase
-    const getSession = async () => {
-      try {
-        // Intentar obtener la sesión con reintentos
-        let session = null;
-        let attempts = 0;
-        const maxAttempts = 5;
+    fetchUserData();
+  }, []);
+
+  const fetchUserData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/settings");
+      
+      if (response.ok) {
+        const data = await response.json();
         
-        while (!session && attempts < maxAttempts) {
-          const { data } = await supabase.auth.getSession();
-          session = data.session;
-          
-          if (!session && attempts < maxAttempts - 1) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
-          attempts++;
-        }
-        
-        if (session?.user) {
-          // Intentar obtener el nombre desde user_settings primero
-          const { data: settings } = await supabase
-            .from('user_settings')
-            .select('company_name')
-            .eq('user_id', session.user.id)
-            .single();
-
-          const displayName = settings?.company_name || 
-                             session.user.user_metadata?.name || 
-                             session.user.email?.split('@')[0] || 
-                             "Usuario";
-
-          setUser({
-            name: displayName,
-            email: session.user.email || "",
-          });
-        } else {
-          window.location.href = '/login';
-        }
-      } catch (err) {
-        console.error("Error obteniendo sesión:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    getSession();
-
-    // Escuchar cambios en la autenticación
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        // Recargar desde user_settings
-        const { data: settings } = await supabase
-          .from('user_settings')
-          .select('company_name')
-          .eq('user_id', session.user.id)
-          .single();
-
-        const displayName = settings?.company_name || 
-                           session.user.user_metadata?.name || 
-                           session.user.email?.split('@')[0] || 
+        // Usar la misma lógica que settings para obtener el nombre
+        const displayName = data.settings?.company_name || 
+                           data.user?.user_metadata?.name || 
+                           data.user?.user_metadata?.full_name ||
+                           data.user?.email?.split('@')[0] || 
                            "Usuario";
 
         setUser({
           name: displayName,
-          email: session.user.email || "",
+          email: data.user?.email || data.settings?.email || "",
         });
       } else {
-        setUser(null);
+        // Fallback si falla la API
+        setUser({
+          name: "Usuario",
+          email: "usuario@ejemplo.com"
+        });
       }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+      // Fallback en caso de error
+      setUser({
+        name: "Usuario",
+        email: "usuario@ejemplo.com"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSignOut = async () => {
     try {
-      await fetch('/api/auth/signout', { method: 'POST' });
+      await fetch("/api/auth/signout", { method: "POST" });
       window.location.href = "/login";
     } catch (err) {
       console.error("Error al cerrar sesión:", err);
@@ -115,7 +74,7 @@ export function UserProfile() {
       .substring(0, 2);
   };
 
-  if (loading || !user) {
+  if (loading) {
     return (
       <div className="p-4 border-t border-sidebar-border">
         <div className="flex items-center gap-3 px-4 py-3">
@@ -123,6 +82,27 @@ export function UserProfile() {
           <div className="flex-1 space-y-2">
             <div className="h-3 bg-sidebar-primary/50 rounded animate-pulse w-24" />
             <div className="h-2 bg-sidebar-primary/30 rounded animate-pulse w-32" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Si no hay usuario después de cargar, mostrar usuario por defecto
+  if (!user) {
+    return (
+      <div className="p-4 border-t border-sidebar-border">
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg">
+          <div className="w-8 h-8 rounded-full bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground text-sm font-semibold">
+            U
+          </div>
+          <div className="flex-1 min-w-0 text-left">
+            <p className="text-sm font-medium text-sidebar-foreground truncate">
+              Usuario
+            </p>
+            <p className="text-xs text-sidebar-foreground/60 truncate">
+              Cargando...
+            </p>
           </div>
         </div>
       </div>
