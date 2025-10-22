@@ -148,19 +148,143 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
 
   const parseAnalysisResult = (text: string): AnalysisResult => {
     const requestedMatch = text.match(
-      /\*\*Main Answer:\*\*\s*([\s\S]*?)(?=\*\*Discrepancies Found:\*\*|$)/i
+      /##\s*LO SOLICITADO\s*([\s\S]*?)(?=##\s*DISCREPANCIES|$)/i
     );
     const discrepanciesMatch = text.match(
-      /\*\*Discrepancies Found:\*\*\s*([\s\S]*?)(?=\*\*Suggested RFIs:\*\*|$)/i
+      /##\s*DISCREPANCIES\s*([\s\S]*?)(?=##\s*RFIs|$)/i
     );
-    const rfisMatch = text.match(/\*\*Suggested RFIs:\*\*\s*([\s\S]*?)$/i);
+    const rfisMatch = text.match(/##\s*RFIs\s*([\s\S]*?)$/i);
 
-    // El nuevo formato simplificado no incluye tablas de equipos ni costos
+    // Extract items from summary table if exists
     const extractedItems: ExtractedItem[] = [];
-    const totalCostAvailable = 0;
-    const totalCostNeeded = 0;
-    const availableItemsCount = 0;
-    const neededItemsCount = 0;
+    const requestedText = requestedMatch?.[1] || "";
+
+    // Find all locations mentioned in the text
+    // Look for patterns like "- **Toilet Rooms**: 1 unit required"
+    const locationMatches = Array.from(
+      requestedText.matchAll(/[-•*]\s*\*\*([^*:]+)\*\*:\s*(\d+)\s*unit/gi)
+    );
+    const locations = locationMatches.map((m) => ({
+      name: m[1].trim(),
+      quantity: parseInt(m[2]),
+    }));
+
+    // If no specific pattern found, look for room mentions in summary
+    if (locations.length === 0) {
+      const summaryMatches = Array.from(
+        requestedText.matchAll(/[-•*]\s*\*\*([^*:]+)\*\*:/gi)
+      );
+      summaryMatches.forEach((m) => {
+        locations.push({
+          name: m[1].trim(),
+          quantity: 1,
+        });
+      });
+    }
+
+    const tableMatch = requestedText.match(
+      /\|.*Job Category.*\|.*Recommended Equipment.*\|([\s\S]*?)(?=\n\n|All the|$)/i
+    );
+
+    if (tableMatch) {
+      const rows = tableMatch[1]
+        .split("\n")
+        .filter(
+          (row) => row.trim() && !row.includes("---") && !row.includes("|--")
+        );
+      rows.forEach((row, index) => {
+        const cells = row
+          .split("|")
+          .map((cell) => cell.trim())
+          .filter(Boolean);
+        if (cells.length >= 4) {
+          // Extract equipment name and tag from "Equipment Name (TAG)"
+          const equipmentMatch = cells[1]?.match(/(.+?)\s*\(([^)]+)\)/);
+          const equipmentName = equipmentMatch?.[1]?.trim() || cells[1];
+          const equipmentTag = equipmentMatch?.[2]?.trim() || "";
+
+          // Extract cost from Value/Cost column
+          const costMatch = cells[3]?.match(/\$?\s*([0-9,]+(?:\.[0-9]{2})?)/);
+          const cost = parseFloat(costMatch?.[1]?.replace(/,/g, "") || "0");
+
+          // Create individual items for each location
+          if (locations.length > 0) {
+            locations.forEach((location, locIndex) => {
+              extractedItems.push({
+                itemId: `${equipmentTag || "ITEM"}-${String(
+                  locIndex + 1
+                ).padStart(3, "0")}`,
+                csiCode: cells[0] || "",
+                description: equipmentName,
+                quantity: location.quantity,
+                unit: "EA",
+                unitCost: cost,
+                total: cost * location.quantity,
+                confidence: cells[2]?.toLowerCase().includes("available")
+                  ? 92
+                  : cells[2]?.toLowerCase().includes("checked")
+                  ? 85
+                  : 88,
+                source: location.name,
+              });
+            });
+          } else {
+            // Fallback: create single item
+            extractedItems.push({
+              itemId:
+                equipmentTag || `ITEM-${String(index + 1).padStart(3, "0")}`,
+              csiCode: cells[0] || "",
+              description: equipmentName,
+              quantity: 1,
+              unit: "EA",
+              unitCost: cost,
+              total: cost,
+              confidence: cells[2]?.toLowerCase().includes("available")
+                ? 92
+                : cells[2]?.toLowerCase().includes("checked")
+                ? 85
+                : 88,
+              source: "Blueprint",
+            });
+          }
+        }
+      });
+    }
+
+    // Extract total costs from AI response
+    let totalCostAvailable = 0;
+    let totalCostNeeded = 0;
+    let availableItemsCount = 0;
+    let neededItemsCount = 0;
+
+    // Look for "Total Cost for Available" pattern
+    const totalCostMatch = requestedText.match(
+      /Total Cost for Available:\s*(\d+)\s*x\s*\$(\d+(?:,\d{3})*(?:\.\d{2})?)\s*=\s*\$(\d+(?:,\d{3})*(?:\.\d{2})?)/i
+    );
+    if (totalCostMatch) {
+      availableItemsCount = parseInt(totalCostMatch[1]);
+      totalCostAvailable = parseFloat(totalCostMatch[3].replace(/,/g, ""));
+    }
+
+    // Calculate needed items from extractedItems
+    if (extractedItems.length > 0) {
+      neededItemsCount = extractedItems.filter(
+        (item) => item.confidence < 90
+      ).length;
+      totalCostNeeded = extractedItems
+        .filter((item) => item.confidence < 90)
+        .reduce((sum, item) => sum + item.total, 0);
+
+      // If we didn't find the total from text, calculate from available items
+      if (totalCostAvailable === 0) {
+        availableItemsCount = extractedItems.filter(
+          (item) => item.confidence >= 90
+        ).length;
+        totalCostAvailable = extractedItems
+          .filter((item) => item.confidence >= 90)
+          .reduce((sum, item) => sum + item.total, 0);
+      }
+    }
 
     // Count discrepancies
     const discrepancyText = discrepanciesMatch?.[1]?.trim() || "";
@@ -168,11 +292,14 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
     // Check if AI explicitly says there are no discrepancies
     const noDiscrepanciesPatterns = [
       /no discrepancies/i,
+      /there are no discrepancies/i,
+      /no conflicts/i,
       /no issues/i,
       /no problems/i,
-      /no conflicts/i,
-      /none found/i,
-      /not detected/i
+      /everything matches/i,
+      /all requirements are met/i,
+      /blueprint matches/i,
+      /inventory matches/i
     ];
     
     const hasNoDiscrepancies = noDiscrepanciesPatterns.some(pattern => 
@@ -187,9 +314,9 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
       ).length;
 
     return {
-      requested: requestedMatch?.[1]?.trim() || "No main answer provided",
-      discrepancies: discrepancyText || "No discrepancies found",
-      rfis: rfisMatch?.[1]?.trim() || "No RFIs suggested",
+      requested: requestedMatch?.[1]?.trim() || "Not available",
+      discrepancies: discrepancyText || "No discrepancies detected",
+      rfis: rfisMatch?.[1]?.trim() || "No RFIs required",
       extractedItems: extractedItems.length > 0 ? extractedItems : undefined,
       discrepancyCount: discrepancyCount > 0 ? discrepancyCount : undefined,
       totalCostAvailable:
@@ -538,11 +665,11 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                 </div>
               )}
 
-              {/* Result - Main Answer */}
+              {/* Result - Requested */}
               {analysisResult && (
                 <>
                   <div className="mt-6 p-4 border rounded bg-muted/30 whitespace-pre-wrap text-sm">
-                    <h4 className="text-md font-semibold mb-2">Main Answer:</h4>
+                    <h4 className="text-md font-semibold mb-2">Requested:</h4>
                     {analysisResult.requested}
                   </div>
 
