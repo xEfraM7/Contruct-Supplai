@@ -2,13 +2,14 @@
 
 import type React from "react"
 import { useState } from "react"
-import { Building2, LayoutDashboard, Bot, Users, BarChart3, Settings, Package, Menu, X } from "lucide-react"
+import { Building2, LayoutDashboard, Bot, Users, BarChart3, Settings, Package, Calendar, Menu, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRouter, usePathname } from "next/navigation"
 import { UserProfile } from "./UserProfile"
 
 const navItems = [
   { icon: LayoutDashboard, label: "Overview", path: "/overview" },
+  { icon: Calendar, label: "Schedule", path: "/schedule" },
   { icon: Package, label: "Equipment", path: "/equipment" },
   { icon: Bot, label: "AI Agents", path: "/agents" },
   { icon: Users, label: "Subcontractors", path: "/subcontractors" },

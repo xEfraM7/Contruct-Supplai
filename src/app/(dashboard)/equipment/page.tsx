@@ -77,7 +77,7 @@ export default function EquipmentPage() {
       ) : (
         <>
           <EquipmentStats equipment={equipment} />
-          <EquipmentTable equipment={equipment} onRefresh={fetchEquipment} />
+          <EquipmentTable equipment={equipment} />
         </>
       )}
     </section>

@@ -13,7 +13,7 @@ import {
 import {
   FileText,
   DollarSign,
-  MessageSquare,
+  Clock,
   Plus,
   Trash2,
   AlertTriangle,
@@ -28,13 +28,10 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { CreateProjectModal } from "@/components/modals/CreateProjectModal";
-
-const kpis = [
-  { label: "Active Contracts", value: "24", icon: FileText, change: "+12%" },
-  { label: "Total Revenue", value: "$2.4M", icon: DollarSign, change: "+8%" },
-  { label: "Pending RFIs", value: "7", icon: MessageSquare, change: "-3%" },
-];
+import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
+import { formatDate, getDateStatus } from "@/lib/utils/dateUtils";
 
 interface Project {
   id: string;
@@ -44,8 +41,12 @@ interface Project {
   clientPhone?: string;
   clientEmail?: string;
   startDate?: string;
+  estimatedEndDate?: string;
   estimatedBudget?: number;
   description?: string;
+  status?: string;
+  completionPercentage?: number;
+  actualEndDate?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -60,6 +61,48 @@ export function DashboardOverviewComponent() {
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(
     new Set()
   );
+
+  // Get dashboard metrics
+  const { 
+    activeContracts, 
+    totalBudget, 
+    onTimeDelivery, 
+    isLoading: metricsLoading,
+    refetch: refetchMetrics 
+  } = useDashboardMetrics();
+
+  // Calculate project progress based on dates
+  const calculateProgress = (project: Project): number => {
+    if (project.completionPercentage !== undefined && project.completionPercentage > 0) {
+      return project.completionPercentage;
+    }
+    
+    if (!project.startDate || !project.estimatedEndDate) {
+      return 0;
+    }
+    
+    const startDate = new Date(project.startDate);
+    const endDate = new Date(project.estimatedEndDate);
+    const currentDate = new Date();
+    
+    if (currentDate < startDate) return 0;
+    if (currentDate > endDate) return 100;
+    
+    const totalDuration = endDate.getTime() - startDate.getTime();
+    const elapsed = currentDate.getTime() - startDate.getTime();
+    
+    return Math.round((elapsed / totalDuration) * 100);
+  };
+
+  // Get status color
+  const getStatusColor = (status?: string) => {
+    switch (status) {
+      case 'completed': return 'bg-green-100 text-green-800';
+      case 'on_hold': return 'bg-yellow-100 text-yellow-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-blue-100 text-blue-800';
+    }
+  };
 
   const toggleProject = (projectId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -95,6 +138,7 @@ export function DashboardOverviewComponent() {
 
   const handleProjectCreated = () => {
     fetchProjects();
+    refetchMetrics(); // Refresh metrics when a new project is created
   };
 
   const handleDeleteClick = (project: Project, e: React.MouseEvent) => {
@@ -116,6 +160,7 @@ export function DashboardOverviewComponent() {
         setIsDeleteModalOpen(false);
         setProjectToDelete(null);
         fetchProjects();
+        refetchMetrics(); // Refresh metrics when a project is deleted
       } else {
         alert("Error deleting project");
       }
@@ -204,26 +249,71 @@ export function DashboardOverviewComponent() {
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        {kpis.map((kpi) => (
-          <Card key={kpi.label} className="bg-card border-border">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">
-                    {kpi.label}
-                  </p>
-                  <p className="text-3xl font-bold text-card-foreground">
-                    {kpi.value}
-                  </p>
-                  <p className="text-xs mt-2">{kpi.change} from last month</p>
-                </div>
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <kpi.icon className="w-6 h-6 text-primary" />
-                </div>
+        {/* Active Contracts */}
+        <Card className="bg-card border-border">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">
+                  Active Contracts
+                </p>
+                <p className="text-3xl font-bold text-card-foreground">
+                  {metricsLoading ? "..." : activeContracts}
+                </p>
+                <p className="text-xs mt-2 text-muted-foreground">
+                  Currently active projects
+                </p>
               </div>
-            </CardContent>
-          </Card>
-        ))}
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <FileText className="w-6 h-6 text-primary" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Total Budget */}
+        <Card className="bg-card border-border">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">
+                  Total Budget
+                </p>
+                <p className="text-3xl font-bold text-card-foreground">
+                  {metricsLoading ? "..." : `$${totalBudget.toLocaleString()}`}
+                </p>
+                <p className="text-xs mt-2 text-muted-foreground">
+                  Combined active projects budget
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <DollarSign className="w-6 h-6 text-primary" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* On Time Delivery */}
+        <Card className="bg-card border-border">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">
+                  On Time Delivery
+                </p>
+                <p className="text-3xl font-bold text-card-foreground">
+                  {metricsLoading ? "..." : `${onTimeDelivery}%`}
+                </p>
+                <p className="text-xs mt-2 text-muted-foreground">
+                  Completed projects delivered on time
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Clock className="w-6 h-6 text-primary" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Recent Projects */}
@@ -262,8 +352,26 @@ export function DashboardOverviewComponent() {
                             <h3 className="text-xl font-semibold text-card-foreground">
                               {project.name}
                             </h3>
-                            <Badge variant="secondary">Active</Badge>
+                            <Badge className={getStatusColor(project.status)}>
+                              {project.status ? 
+                                project.status.charAt(0).toUpperCase() + project.status.slice(1) : 
+                                'Active'
+                              }
+                            </Badge>
                           </div>
+                          
+                          {/* Progress Bar */}
+                          {project.status === 'active' && (
+                            <div className="mb-3">
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="text-xs text-muted-foreground">Progress</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {calculateProgress(project)}%
+                                </span>
+                              </div>
+                              <Progress value={calculateProgress(project)} className="h-2" />
+                            </div>
+                          )}
                           <p className="text-sm text-muted-foreground flex items-center gap-2">
                             <FileText className="w-4 h-4" />
                             {project.address}
@@ -343,10 +451,27 @@ export function DashboardOverviewComponent() {
                                     Start Date
                                   </p>
                                   <p className="font-medium text-card-foreground">
-                                    {new Date(
-                                      project.startDate
-                                    ).toLocaleDateString()}
+                                    {formatDate(project.startDate)}
                                   </p>
+                                </div>
+                              </div>
+                            )}
+
+                            {project.estimatedEndDate && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <Calendar className="w-4 h-4 text-muted-foreground" />
+                                <div>
+                                  <p className="text-xs text-muted-foreground">
+                                    Est. End Date
+                                  </p>
+                                  <p className="font-medium text-card-foreground">
+                                    {formatDate(project.estimatedEndDate)}
+                                  </p>
+                                  {project.status === 'active' && (
+                                    <p className={`text-xs ${getDateStatus(project.estimatedEndDate).color}`}>
+                                      {getDateStatus(project.estimatedEndDate).message}
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                             )}
@@ -375,9 +500,7 @@ export function DashboardOverviewComponent() {
                                   Created
                                 </p>
                                 <p className="font-medium text-card-foreground">
-                                  {new Date(
-                                    project.createdAt
-                                  ).toLocaleDateString()}
+                                  {formatDate(project.createdAt)}
                                 </p>
                               </div>
                             </div>

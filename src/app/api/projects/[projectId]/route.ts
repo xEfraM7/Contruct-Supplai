@@ -4,9 +4,10 @@ import { NextResponse } from "next/server";
 
 export async function GET(
   request: Request,
-  { params }: { params: { projectId: string } }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
+    const { projectId } = await params;
     const cookieStore = await cookies();
 
     const supabase = createServerClient(
@@ -42,7 +43,7 @@ export async function GET(
     const { data: project, error } = await supabase
       .from("project")
       .select("*")
-      .eq("id", params.projectId)
+      .eq("id", projectId)
       .eq("user_id", user.id)
       .single();
 
@@ -73,9 +74,10 @@ export async function GET(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { projectId: string } }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
+    const { projectId } = await params;
     const cookieStore = await cookies();
 
     const supabase = createServerClient(
@@ -111,7 +113,7 @@ export async function DELETE(
     const { error } = await supabase
       .from("project")
       .delete()
-      .eq("id", params.projectId)
+      .eq("id", projectId)
       .eq("user_id", user.id);
 
     if (error) {

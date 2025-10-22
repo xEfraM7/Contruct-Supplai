@@ -32,6 +32,7 @@ export function CreateProjectModal({
   const [clientPhone, setClientPhone] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [startDate, setStartDate] = useState("");
+  const [estimatedEndDate, setEstimatedEndDate] = useState("");
   const [estimatedBudget, setEstimatedBudget] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
   const [loading, setLoading] = useState(false);
@@ -61,6 +62,7 @@ export function CreateProjectModal({
           client_phone: clientPhone,
           client_email: clientEmail,
           start_date: startDate,
+          estimated_end_date: estimatedEndDate,
           estimated_budget: estimatedBudget,
           description: projectDescription,
         }),
@@ -79,6 +81,7 @@ export function CreateProjectModal({
       setClientPhone("");
       setClientEmail("");
       setStartDate("");
+      setEstimatedEndDate("");
       setEstimatedBudget("");
       setProjectDescription("");
       onOpenChange(false);
@@ -192,18 +195,30 @@ export function CreateProjectModal({
                 />
               </div>
 
-              {/* Estimated Budget */}
+              {/* Estimated End Date */}
               <div className="grid gap-2">
-                <Label htmlFor="estimatedBudget">Estimated Budget</Label>
+                <Label htmlFor="estimatedEndDate">Estimated End Date</Label>
                 <Input
-                  id="estimatedBudget"
-                  type="number"
-                  placeholder="Enter budget"
-                  value={estimatedBudget}
-                  onChange={(e) => setEstimatedBudget(e.target.value)}
+                  id="estimatedEndDate"
+                  type="date"
+                  value={estimatedEndDate}
+                  onChange={(e) => setEstimatedEndDate(e.target.value)}
                   disabled={loading}
                 />
               </div>
+            </div>
+
+            {/* Estimated Budget */}
+            <div className="grid gap-2">
+              <Label htmlFor="estimatedBudget">Estimated Budget</Label>
+              <Input
+                id="estimatedBudget"
+                type="number"
+                placeholder="Enter budget"
+                value={estimatedBudget}
+                onChange={(e) => setEstimatedBudget(e.target.value)}
+                disabled={loading}
+              />
             </div>
 
             {/* Project Description */}
