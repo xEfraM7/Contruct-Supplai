@@ -20,7 +20,9 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Phone, Plus, Mail, Building2, Briefcase, Loader2 } from "lucide-react";
+import { Phone, Plus, Mail, Building2, Briefcase, Loader2, History } from "lucide-react";
+import { CreateCallDialog } from "@/components/calls/CreateCallDialog";
+import { CallHistoryDialog } from "@/components/calls/CallHistoryDialog";
 
 interface Subcontractor {
   id: string;
@@ -64,6 +66,11 @@ export function SubContractorsComponent() {
     projectId: "none",
   });
   const [errors, setErrors] = useState<Partial<FormData>>({});
+  
+  // Call dialogs state
+  const [isCallDialogOpen, setIsCallDialogOpen] = useState(false);
+  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
+  const [selectedSubcontractor, setSelectedSubcontractor] = useState<Subcontractor | null>(null);
 
   const fetchSubcontractors = async () => {
     setIsLoading(true);
@@ -112,9 +119,14 @@ export function SubContractorsComponent() {
     }
   }, [isAddModalOpen]);
 
-  const handleCall = (phone: string) => {
-    // Funcionalidad desactivada por ahora
-    console.log(`Call button clicked for: ${phone}`);
+  const handleCall = (subcontractor: Subcontractor) => {
+    setSelectedSubcontractor(subcontractor);
+    setIsCallDialogOpen(true);
+  };
+
+  const handleViewHistory = (subcontractor: Subcontractor) => {
+    setSelectedSubcontractor(subcontractor);
+    setIsHistoryDialogOpen(true);
   };
 
   const getStatusBadge = (status: string) => {
@@ -286,14 +298,23 @@ export function SubContractorsComponent() {
                   </div>
                 </div>
 
-                <Button
-                  size="sm"
-                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-                  onClick={() => handleCall(contractor.phone)}
-                >
-                  <Phone className="w-4 h-4 mr-2" />
-                  Call {contractor.name.split(" ")[0]}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                    onClick={() => handleCall(contractor)}
+                  >
+                    <Phone className="w-4 h-4 mr-2" />
+                    Call
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleViewHistory(contractor)}
+                  >
+                    <History className="w-4 h-4" />
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -445,6 +466,32 @@ export function SubContractorsComponent() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Call Dialogs */}
+      {selectedSubcontractor && (
+        <>
+          <CreateCallDialog
+            open={isCallDialogOpen}
+            onOpenChange={setIsCallDialogOpen}
+            subcontractorId={selectedSubcontractor.id}
+            subcontractorName={selectedSubcontractor.name}
+            subcontractorPhone={selectedSubcontractor.phone}
+            onCallCreated={() => {
+              // Refresh calls if history is open
+              if (isHistoryDialogOpen) {
+                setIsHistoryDialogOpen(false);
+                setTimeout(() => setIsHistoryDialogOpen(true), 100);
+              }
+            }}
+          />
+          <CallHistoryDialog
+            open={isHistoryDialogOpen}
+            onOpenChange={setIsHistoryDialogOpen}
+            subcontractorId={selectedSubcontractor.id}
+            subcontractorName={selectedSubcontractor.name}
+          />
+        </>
+      )}
     </section>
   );
 }

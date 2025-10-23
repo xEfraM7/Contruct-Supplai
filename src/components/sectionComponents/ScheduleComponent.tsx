@@ -43,6 +43,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useState, useEffect, useTransition } from "react";
 import { createEvent, getEvents, updateEvent, deleteEvent, updateEventStatus, type ConstructionEvent } from "@/lib/actions/schedule-actions";
 import { toast } from "sonner";
+import { useConfirm } from "@/hooks/use-confirm";
 
 // Event type configurations for construction management
 const eventTypeConfig = {
@@ -92,6 +93,7 @@ export function ScheduleComponent() {
   const [events, setEvents] = useState<ConstructionEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
+  const { confirm, ConfirmDialog } = useConfirm();
 
   // Form state
   const [formData, setFormData] = useState<EventFormData>({
@@ -198,7 +200,15 @@ export function ScheduleComponent() {
   };
 
   const handleDeleteEvent = async (eventId: string) => {
-    if (!confirm("Are you sure you want to delete this event?")) return;
+    const confirmed = await confirm({
+      title: "Delete Event",
+      description: "Are you sure you want to delete this event? This action cannot be undone.",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      variant: "destructive",
+    });
+
+    if (!confirmed) return;
 
     startTransition(async () => {
       try {
@@ -1152,6 +1162,7 @@ export function ScheduleComponent() {
           </CardContent>
         </Card>
       )}
+      <ConfirmDialog />
     </section>
   );
 }
