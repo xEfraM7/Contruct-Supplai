@@ -23,7 +23,7 @@ const conversations = [
 export function AgentsPanelComponent() {
   return (
     <section>
-      <h2 className="text-2xl font-semibold text-foreground mb-6">AI Agents</h2>
+      <h2 className="text-2xl font-semibold text-white mb-6">AI Agents</h2>
 
       {/* Create Agent */}
       <Card className="bg-card border-border mb-6">
