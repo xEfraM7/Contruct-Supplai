@@ -121,7 +121,7 @@ export function LoginFormComponent() {
         </div>
         <div>
           <h2 className="text-xl font-semibold text-foreground">Construct Supplia</h2>
-          <p className="text-sm text-muted-foreground">Construct Supplia</p>
+          <p className="text-sm text-muted-foreground">Construction CRM</p>
         </div>
       </div>
 

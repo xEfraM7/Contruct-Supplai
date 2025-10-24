@@ -99,7 +99,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 Construct Supplia
               </h1>
               <p className="text-xs text-sidebar-foreground/60">
-                Construct Supplia
+                Construction CRM
               </p>
             </div>
           </div>
