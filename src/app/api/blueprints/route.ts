@@ -66,7 +66,7 @@ export async function GET(request: Request) {
         createdAt: b.created_at,
       })),
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Error al obtener blueprints' },
       { status: 500 }
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
 
     // Upload file to Supabase Storage
     const fileName = `${user.id}/${projectId}/${Date.now()}-${file.name}`;
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('blueprints')
       .upload(fileName, file);
 
@@ -162,7 +162,7 @@ export async function POST(request: Request) {
         fileUrl: blueprint.file_url,
       },
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Error al guardar blueprint' },
       { status: 500 }

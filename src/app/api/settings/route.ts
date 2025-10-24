@@ -53,7 +53,7 @@ export async function GET() {
         user_metadata: user.user_metadata,
       },
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Error al obtener configuración' },
       { status: 500 }
@@ -146,7 +146,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Error al guardar configuración' },
       { status: 500 }

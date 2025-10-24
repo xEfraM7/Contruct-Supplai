@@ -66,7 +66,7 @@ export async function GET(request: Request) {
         createdAt: a.created_at,
       })),
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Error al obtener análisis' },
       { status: 500 }
@@ -142,7 +142,7 @@ export async function POST(request: Request) {
         createdAt: analysis.created_at,
       },
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Error al guardar análisis' },
       { status: 500 }

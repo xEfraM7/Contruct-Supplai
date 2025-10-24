@@ -64,7 +64,7 @@ export async function GET(
         updatedAt: project.updated_at,
       },
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { success: false, error: "Error al obtener proyecto" },
       { status: 500 }
@@ -124,7 +124,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { success: false, error: "Error al eliminar proyecto" },
       { status: 500 }

@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import { HardHat } from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,7 +19,6 @@ export function LoginFormComponent() {
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const router = useRouter();
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);

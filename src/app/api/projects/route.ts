@@ -67,7 +67,7 @@ export async function GET() {
         updatedAt: p.updated_at,
       })),
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Error al obtener proyectos' },
       { status: 500 }
@@ -152,7 +152,7 @@ export async function POST(request: Request) {
         updatedAt: project.updated_at,
       },
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Error al crear proyecto' },
       { status: 500 }
