@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BuildPro - Construction CRM",
+  title: "Construct Supplia",
   description: "Manage your construction projects with confidence",
 };
 

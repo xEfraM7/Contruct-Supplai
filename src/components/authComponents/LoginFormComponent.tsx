@@ -120,15 +120,15 @@ export function LoginFormComponent() {
           <HardHat className="w-7 h-7 text-primary-foreground" />
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-foreground">BuildPro</h2>
-          <p className="text-sm text-muted-foreground">Construction CRM</p>
+          <h2 className="text-xl font-semibold text-foreground">Construct Supplia</h2>
+          <p className="text-sm text-muted-foreground">Construct Supplia</p>
         </div>
       </div>
 
       {/* Welcome Text */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">
-          {isLogin ? "Welcome to BuildPro" : "Create your account"}
+          {isLogin ? "Welcome to Construct Supplia" : "Create your account"}
         </h1>
         <p className="text-muted-foreground">
           {isLogin

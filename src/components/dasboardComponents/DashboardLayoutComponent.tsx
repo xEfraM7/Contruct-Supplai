@@ -1,11 +1,22 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState } from "react"
-import { Building2, LayoutDashboard, Bot, Users, BarChart3, Settings, Package, Calendar, Menu, X } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { useRouter, usePathname } from "next/navigation"
-import { UserProfile } from "./UserProfile"
+import type React from "react";
+import { useState } from "react";
+import {
+  Building2,
+  LayoutDashboard,
+  Bot,
+  Users,
+  BarChart3,
+  Settings,
+  Package,
+  Calendar,
+  Menu,
+  X,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useRouter, usePathname } from "next/navigation";
+import { UserProfile } from "./UserProfile";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Overview", path: "/overview" },
@@ -15,23 +26,21 @@ const navItems = [
   { icon: Users, label: "Subcontractors", path: "/subcontractors" },
   { icon: BarChart3, label: "Analytics", path: "/analytics" },
   { icon: Settings, label: "Settings", path: "/settings" },
-]
+];
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
-export function DashboardLayout({ 
-  children
-}: DashboardLayoutProps) {
-  const router = useRouter()
-  const pathname = usePathname()
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+export function DashboardLayout({ children }: DashboardLayoutProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleNavigation = (path: string) => {
-    router.push(path)
-    setIsMobileMenuOpen(false)
-  }
+    router.push(path);
+    setIsMobileMenuOpen(false);
+  };
 
   return (
     <div className="flex h-screen bg-background dark">
@@ -43,41 +52,55 @@ export function DashboardLayout({
               <Building2 className="w-5 h-5 text-sidebar-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-base font-semibold text-sidebar-foreground">BuildCRM</h1>
+              <h1 className="text-base font-semibold text-sidebar-foreground">
+                Construct Supplia
+              </h1>
             </div>
           </div>
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="p-2 text-sidebar-foreground hover:bg-sidebar-accent rounded-lg"
           >
-            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {isMobileMenuOpen ? (
+              <X className="w-6 h-6" />
+            ) : (
+              <Menu className="w-6 h-6" />
+            )}
           </button>
         </div>
       </div>
 
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="lg:hidden fixed inset-0 bg-black/50 z-40"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
       {/* Sidebar */}
-      <aside className={cn(
-        "bg-sidebar border-r border-sidebar-border flex flex-col transition-transform duration-300 ease-in-out",
-        "fixed lg:static inset-y-0 left-0 z-40",
-        "w-64 lg:w-64",
-        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-      )}>
+      <aside
+        className={cn(
+          "bg-sidebar border-r border-sidebar-border flex flex-col transition-transform duration-300 ease-in-out",
+          "fixed lg:static inset-y-0 left-0 z-40",
+          "w-64 lg:w-64",
+          isMobileMenuOpen
+            ? "translate-x-0"
+            : "-translate-x-full lg:translate-x-0"
+        )}
+      >
         <div className="p-6 border-b border-sidebar-border hidden lg:block">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-sidebar-primary flex items-center justify-center">
               <Building2 className="w-6 h-6 text-sidebar-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold text-sidebar-foreground">BuildCRM</h1>
-              <p className="text-xs text-sidebar-foreground/60">Construction Manager</p>
+              <h1 className="text-lg font-semibold text-sidebar-foreground">
+                Construct Supplia
+              </h1>
+              <p className="text-xs text-sidebar-foreground/60">
+                Construct Supplia
+              </p>
             </div>
           </div>
         </div>
@@ -92,7 +115,7 @@ export function DashboardLayout({
                     "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-sm font-medium",
                     pathname === item.path
                       ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                   )}
                 >
                   <item.icon className="w-5 h-5" />
@@ -111,5 +134,5 @@ export function DashboardLayout({
         {children}
       </main>
     </div>
-  )
+  );
 }
