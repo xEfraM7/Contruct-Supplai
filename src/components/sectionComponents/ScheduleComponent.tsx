@@ -40,6 +40,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { DateInput } from "@/components/ui/date-input";
 import { useState, useEffect, useTransition } from "react";
 import { createEvent, getEvents, updateEvent, deleteEvent, updateEventStatus, type ConstructionEvent } from "@/lib/actions/schedule-actions";
 import { toast } from "sonner";
@@ -402,9 +403,8 @@ export function ScheduleComponent() {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <Label htmlFor="date">Start Date *</Label>
-                    <Input 
+                    <DateInput 
                       id="date" 
-                      type="date" 
                       value={formData.date}
                       onChange={(e) => {
                         setFormData(prev => ({ 
@@ -417,12 +417,10 @@ export function ScheduleComponent() {
                   </div>
                   <div>
                     <Label htmlFor="end_date">End Date *</Label>
-                    <Input 
+                    <DateInput 
                       id="end_date" 
-                      type="date" 
                       value={formData.end_date}
                       onChange={(e) => setFormData(prev => ({ ...prev, end_date: e.target.value }))}
-                      min={formData.date} // Prevent selecting date before start date
                     />
                   </div>
                 </div>
@@ -559,9 +557,8 @@ export function ScheduleComponent() {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <Label htmlFor="edit-date">Start Date *</Label>
-                    <Input 
+                    <DateInput 
                       id="edit-date" 
-                      type="date" 
                       value={formData.date}
                       onChange={(e) => {
                         setFormData(prev => ({ 
@@ -574,12 +571,10 @@ export function ScheduleComponent() {
                   </div>
                   <div>
                     <Label htmlFor="edit-end_date">End Date *</Label>
-                    <Input 
+                    <DateInput 
                       id="edit-end_date" 
-                      type="date" 
                       value={formData.end_date}
                       onChange={(e) => setFormData(prev => ({ ...prev, end_date: e.target.value }))}
-                      min={formData.date}
                     />
                   </div>
                 </div>

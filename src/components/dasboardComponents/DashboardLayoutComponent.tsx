@@ -10,7 +10,7 @@ import { UserProfile } from "./UserProfile"
 const navItems = [
   { icon: LayoutDashboard, label: "Overview", path: "/overview" },
   { icon: Calendar, label: "Schedule", path: "/schedule" },
-  { icon: Package, label: "Equipment", path: "/equipment" },
+  { icon: Package, label: "Products", path: "/equipment" },
   { icon: Bot, label: "AI Agents", path: "/agents" },
   { icon: Users, label: "Subcontractors", path: "/subcontractors" },
   { icon: BarChart3, label: "Analytics", path: "/analytics" },

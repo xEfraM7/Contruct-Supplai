@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { DateInput } from "@/components/ui/date-input";
 
 interface CreateProjectModalProps {
   open: boolean;
@@ -186,9 +187,8 @@ export function CreateProjectModal({
               {/* Start Date */}
               <div className="grid gap-2">
                 <Label htmlFor="startDate">Start Date</Label>
-                <Input
+                <DateInput
                   id="startDate"
-                  type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   disabled={loading}
@@ -198,9 +198,8 @@ export function CreateProjectModal({
               {/* Estimated End Date */}
               <div className="grid gap-2">
                 <Label htmlFor="estimatedEndDate">Estimated End Date</Label>
-                <Input
+                <DateInput
                   id="estimatedEndDate"
-                  type="date"
                   value={estimatedEndDate}
                   onChange={(e) => setEstimatedEndDate(e.target.value)}
                   disabled={loading}

@@ -49,7 +49,7 @@ export default function EquipmentPage() {
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
         <div>
           <h2 className="text-xl sm:text-2xl font-semibold text-foreground">
-            Equipment & Tools
+            Products
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
             Track assets and maintenance schedules
@@ -60,7 +60,7 @@ export default function EquipmentPage() {
           className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto shrink-0"
         >
           <Plus className="w-4 h-4 mr-2" />
-          Add Equipment
+          Add Product
         </Button>
       </div>
 

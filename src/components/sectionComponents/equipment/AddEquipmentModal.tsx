@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { DateInput } from "@/components/ui/date-input";
 import {
   Select,
   SelectContent,
@@ -237,9 +238,8 @@ export function AddEquipmentModal({
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="purchase_date">Purchase Date</Label>
-                <Input
+                <DateInput
                   id="purchase_date"
-                  type="date"
                   value={formData.purchase_date}
                   onChange={(e) =>
                     setFormData({ ...formData, purchase_date: e.target.value })
@@ -251,9 +251,8 @@ export function AddEquipmentModal({
             {/* Next Maintenance */}
             <div className="grid gap-2">
               <Label htmlFor="next_maintenance">Next Maintenance Date</Label>
-              <Input
+              <DateInput
                 id="next_maintenance"
-                type="date"
                 value={formData.next_maintenance}
                 onChange={(e) =>
                   setFormData({

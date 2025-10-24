@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
         .order("category", { ascending: true });
 
       if (equipment && equipment.length > 0) {
-        equipmentContext = `\n\n## AVAILABLE EQUIPMENT & TOOLS INVENTORY\n\nThe user has the following equipment available in their inventory:\n\n`;
+        equipmentContext = `\n\n## AVAILABLE PRODUCTS INVENTORY\n\nThe user has the following products available in their inventory:\n\n`;
 
         // Group by category
         interface EquipmentItem {
@@ -94,11 +94,11 @@ export async function POST(req: NextRequest) {
           equipmentContext += "\n";
         }
 
-        equipmentContext += `\nWhen analyzing the blueprint, consider this equipment inventory to:\n`;
-        equipmentContext += `- Recommend specific equipment from the inventory that would be needed for the work\n`;
-        equipmentContext += `- Identify if any required equipment is missing from the inventory\n`;
-        equipmentContext += `- Note which equipment is currently available vs checked out\n`;
-        equipmentContext += `- Suggest equipment that should be reserved or scheduled for this project\n\n`;
+        equipmentContext += `\nWhen analyzing the blueprint, consider this products inventory to:\n`;
+        equipmentContext += `- Recommend specific products from the inventory that would be needed for the work\n`;
+        equipmentContext += `- Identify if any required products are missing from the inventory\n`;
+        equipmentContext += `- Note which products are currently available vs checked out\n`;
+        equipmentContext += `- Suggest products that should be reserved or scheduled for this project\n\n`;
       }
     }
     console.log(equipmentContext);
@@ -122,36 +122,36 @@ export async function POST(req: NextRequest) {
     // Paso 2: Crear un assistant con file_search
     console.log("[ANALYZE_BLUEPRINT] Creando assistant...");
     const assistant = await openai.beta.assistants.create({
-      name: "Blueprint Analyzer with Equipment and Budget Context",
-      instructions: `You are a senior construction engineer and technical analyst for construction blueprints. Your job is to analyze blueprint images and provide structured technical feedback, focusing on job categories and the client's equipment inventory.
+      name: "Blueprint Analyzer with Products and Budget Context",
+      instructions: `You are a senior construction engineer and technical analyst for construction blueprints. Your job is to analyze blueprint images and provide structured technical feedback, focusing on job categories and the client's products inventory.
 
 **Job categories you must consider are:**
 Electrical, Concrete, Roofing, Steel, Plumbing, Framing, Flooring, Glazing, HVAC, Drywall, Masonry, Doors and Windows.
 
-Context: The current equipment and tools inventory is provided above as equipmentContext, including name, tag, category, status, value/cost, and availability.
+Context: The current products inventory is provided above as equipmentContext, including name, tag, category, status, value/cost, and availability.
 
-When generating your response, if any recommended equipment exists in the inventory, you must use the provided value/cost from the inventory. **Always show the actual value/cost given in equipmentContext—never use TBD, 'not mentioned', or suggest market estimations unless the value is actually missing. Only state 'No cost specified in inventory' if the value does not exist for that item.**
+When generating your response, if any recommended products exist in the inventory, you must use the provided value/cost from the inventory. **Always show the actual value/cost given in equipmentContext—never use TBD, 'not mentioned', or suggest market estimations unless the value is actually missing. Only state 'No cost specified in inventory' if the value does not exist for that item.**
 
-For every blueprint input, your response must strictly follow **this format** and compare all blueprint-required elements against the provided equipment inventory:
+For every blueprint input, your response must strictly follow **this format** and compare all blueprint-required elements against the provided products inventory:
 
 ---
 
 ## LO SOLICITADO
 
 - Start with a brief restatement of what was requested and summarize your main findings, mentioning identified components and their job category.  
-- For each component or job category detected in the blueprint, check if appropriate equipment exists in the inventory (equipmentContext):
-  - For each required item, **list specific equipment recommendations** by name and tag, matching by job category and relevance.
-  - Indicate each equipment's status (Available, Checked Out, Maintenance).
-  - **State equipment value/cost exactly as provided in equipmentContext** to help with budgeting.
-  - If equipment is not present or insufficient, **explicitly note missing items and recommend alternatives or rentals**.
+- For each component or job category detected in the blueprint, check if appropriate products exist in the inventory (equipmentContext):
+  - For each required item, **list specific product recommendations** by name and tag, matching by job category and relevance.
+  - Indicate each product's status (Available, Checked Out, Maintenance).
+  - **State product value/cost exactly as provided in equipmentContext** to help with budgeting.
+  - If products are not present or insufficient, **explicitly note missing items and recommend alternatives or rentals**.
 - At the end of this section, include a **summary table** in this exact format:
   
-| Job Category | Recommended Equipment | Status | Value/Cost | Additional Needs |
+| Job Category | Recommended Products | Status | Value/Cost | Additional Needs |
 |--------------|----------------------|--------|------------|------------------|
-| [Category] | [Equipment Name (Tag)] | [Status] | $[Amount] | [Notes] |
+| [Category] | [Product Name (Tag)] | [Status] | $[Amount] | [Notes] |
 
 Example:
-| Job Category | Recommended Equipment | Status | Value/Cost | Additional Needs |
+| Job Category | Recommended Products | Status | Value/Cost | Additional Needs |
 |--------------|----------------------|--------|------------|------------------|
 | Electrical | Generator 7500W (EQ-070) | Available | $2,200 | None |
 | Aerial | Scissor Lift 19ft (EQ-001) | Checked Out | $15,000 | Reserve for next week |
@@ -161,7 +161,7 @@ Example:
 ## DISCREPANCIES
 
 - List all technical discrepancies, inconsistencies, or conflicts in the blueprint (misalignments, missing symbols, ambiguous annotations, compliance issues).
-- If equipment issues arise (e.g., not enough equipment, equipment unavailable for scheduled dates, capacity/fit conflicts), clearly describe them here.
+- If product issues arise (e.g., not enough products, products unavailable for scheduled dates, capacity/fit conflicts), clearly describe them here.
 - Reference job categories for each relevant discrepancy.
 
 ---
@@ -170,7 +170,7 @@ Example:
 
 - Generate Requests for Information (RFIs) to clarify missing details, conflicting elements, or uncertainties found in the blueprint.
 - For each RFI, clearly phrase it as a direct question to the design team or architect.
-- Specifically include RFIs related to equipment or job categories:
+- Specifically include RFIs related to products or job categories:
   - Example: "What is the required lifting capacity for the roof trusses?"
   - "Will additional electrical tools be rented, or should we purchase?"
 - Number RFIs clearly.
@@ -191,7 +191,7 @@ All output must use concise engineering language with technical terminology, and
 
     if (equipmentContext) {
       userMessage += `${equipmentContext}\n`;
-      userMessage += `IMPORTANT: Consider the equipment inventory above when analyzing this blueprint. Include specific equipment recommendations (with tags and prices), availability status, and identify any missing equipment.\n\n`;
+      userMessage += `IMPORTANT: Consider the products inventory above when analyzing this blueprint. Include specific product recommendations (with tags and prices), availability status, and identify any missing products.\n\n`;
     }
 
     userMessage += `Analyze the attached blueprint and provide your response in the 3 specified sections: LO SOLICITADO, DISCREPANCIES, and RFIs.`;
