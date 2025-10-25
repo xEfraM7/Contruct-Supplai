@@ -18,6 +18,8 @@ import {
   MoreVertical,
   Edit,
   Trash2,
+  PhoneCall,
+  History,
 } from "lucide-react";
 import {
   Dialog,
@@ -33,6 +35,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { CreateCallDialog } from "@/components/calls/CreateCallDialog";
+import { CallHistoryDialog } from "@/components/calls/CallHistoryDialog";
 
 interface Client {
   id: string;
@@ -65,6 +69,10 @@ export default function ClientDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedContactForCall, setSelectedContactForCall] =
+    useState<Subcontractor | null>(null);
+  const [selectedContactForHistory, setSelectedContactForHistory] =
+    useState<Subcontractor | null>(null);
 
   const [contactForm, setContactForm] = useState({
     name: "",
@@ -103,14 +111,11 @@ export default function ClientDetailPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(
-        `/api/clients/${clientId}/subcontractors`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(contactForm),
-        }
-      );
+      const response = await fetch(`/api/clients/${clientId}/subcontractors`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(contactForm),
+      });
 
       const result = await response.json();
 
@@ -191,7 +196,9 @@ export default function ClientDetailPage() {
                 <Building2 className="w-8 h-8 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-2xl">{client.company_name}</CardTitle>
+                <CardTitle className="text-2xl">
+                  {client.company_name}
+                </CardTitle>
                 <Badge
                   variant={client.status === "active" ? "default" : "secondary"}
                   className="mt-2"
@@ -290,11 +297,11 @@ export default function ClientDetailPage() {
                   key={contact.id}
                   className="flex items-center justify-between p-4 rounded-lg border border-border hover:border-primary/50 transition-colors"
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 flex-1">
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                       <User className="w-5 h-5 text-primary" />
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <h4 className="font-semibold text-foreground">
                         {contact.name}
                       </h4>
@@ -312,15 +319,37 @@ export default function ClientDetailPage() {
                           </span>
                         )}
                       </div>
+                      {contact.company && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {contact.company}
+                        </p>
+                      )}
                     </div>
                   </div>
-                  <Badge
-                    variant={
-                      contact.status === "active" ? "default" : "secondary"
-                    }
-                  >
-                    {contact.status}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setSelectedContactForHistory(contact)}
+                    >
+                      <History className="w-4 h-4 mr-1" />
+                      History
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => setSelectedContactForCall(contact)}
+                    >
+                      <PhoneCall className="w-4 h-4 mr-1" />
+                      Call
+                    </Button>
+                    <Badge
+                      variant={
+                        contact.status === "active" ? "default" : "secondary"
+                      }
+                    >
+                      {contact.status}
+                    </Badge>
+                  </div>
                 </div>
               ))}
             </div>
@@ -420,6 +449,30 @@ export default function ClientDetailPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Create Call Dialog */}
+      {selectedContactForCall && (
+        <CreateCallDialog
+          open={!!selectedContactForCall}
+          onOpenChange={(open) => !open && setSelectedContactForCall(null)}
+          subcontractorId={selectedContactForCall.id}
+          subcontractorName={selectedContactForCall.name}
+          subcontractorPhone={selectedContactForCall.phone}
+          onCallCreated={() => {
+            setSelectedContactForCall(null);
+          }}
+        />
+      )}
+
+      {/* Call History Dialog */}
+      {selectedContactForHistory && (
+        <CallHistoryDialog
+          open={!!selectedContactForHistory}
+          onOpenChange={(open) => !open && setSelectedContactForHistory(null)}
+          subcontractorId={selectedContactForHistory.id}
+          subcontractorName={selectedContactForHistory.name}
+        />
+      )}
     </section>
   );
 }
