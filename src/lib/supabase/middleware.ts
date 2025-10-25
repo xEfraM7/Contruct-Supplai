@@ -32,10 +32,11 @@ export async function middleware(req: NextRequest) {
     '/overview', 
     '/agents', 
     '/blueprints', 
-    '/subcontractors', 
+    '/clients', 
     '/analytics', 
     '/equipment', 
-    '/settings'
+    '/settings',
+    '/schedule'
   ];
 
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
@@ -70,10 +71,11 @@ export const config = {
     '/overview/:path*',
     '/agents/:path*', 
     '/blueprints/:path*',
-    '/subcontractors/:path*',
+    '/clients/:path*',
     '/analytics/:path*',
     '/equipment/:path*',
     '/settings/:path*',
+    '/schedule/:path*',
     // Rutas públicas que necesitan validación (para redirigir si ya está logueado)
     '/login',
     // Ruta raíz para redirigir según estado de autenticación

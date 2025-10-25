@@ -1,0 +1,425 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  ArrowLeft,
+  Building2,
+  Mail,
+  Phone,
+  MapPin,
+  Globe,
+  Plus,
+  Loader2,
+  User,
+  MoreVertical,
+  Edit,
+  Trash2,
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+interface Client {
+  id: string;
+  company_name: string;
+  company_email: string | null;
+  company_phone: string | null;
+  address: string | null;
+  website: string | null;
+  notes: string | null;
+  status: string;
+  subcontractors: Subcontractor[];
+}
+
+interface Subcontractor {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  company: string;
+  status: string;
+  created_at: string;
+}
+
+export default function ClientDetailPage() {
+  const router = useRouter();
+  const params = useParams();
+  const clientId = params.clientId as string;
+
+  const [client, setClient] = useState<Client | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAddContactOpen, setIsAddContactOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [contactForm, setContactForm] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    company: "",
+  });
+
+  const fetchClient = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/clients/${clientId}`);
+      const result = await response.json();
+
+      if (result.success && result.client) {
+        setClient(result.client);
+      } else {
+        console.error("Failed to fetch client:", result.error);
+      }
+    } catch (error) {
+      console.error("Error fetching client:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (clientId) {
+      fetchClient();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId]);
+
+  const handleAddContact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(
+        `/api/clients/${clientId}/subcontractors`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(contactForm),
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        setIsAddContactOpen(false);
+        setContactForm({ name: "", phone: "", email: "", company: "" });
+        fetchClient();
+      } else {
+        alert(result.error || "Failed to add contact");
+      }
+    } catch (error) {
+      console.error("Error adding contact:", error);
+      alert("An error occurred");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteClient = async () => {
+    if (!confirm("Are you sure you want to delete this client?")) return;
+
+    try {
+      const response = await fetch(`/api/clients/${clientId}`, {
+        method: "DELETE",
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        router.push("/clients");
+      } else {
+        alert(result.error || "Failed to delete client");
+      }
+    } catch (error) {
+      console.error("Error deleting client:", error);
+      alert("An error occurred");
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    );
+  }
+
+  if (!client) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">Client not found</p>
+        <Button onClick={() => router.push("/clients")} className="mt-4">
+          Back to Clients
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <section>
+      <div className="mb-6">
+        <Button
+          variant="ghost"
+          onClick={() => router.push("/clients")}
+          className="mb-4"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Clients
+        </Button>
+      </div>
+
+      {/* Client Info Card */}
+      <Card className="bg-card border-border mb-6">
+        <CardHeader>
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Building2 className="w-8 h-8 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-2xl">{client.company_name}</CardTitle>
+                <Badge
+                  variant={client.status === "active" ? "default" : "secondary"}
+                  className="mt-2"
+                >
+                  {client.status}
+                </Badge>
+              </div>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem>
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit Client
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleDeleteClient}
+                  className="text-red-600"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Client
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {client.company_email && (
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <Mail className="w-5 h-5" />
+              <span>{client.company_email}</span>
+            </div>
+          )}
+          {client.company_phone && (
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <Phone className="w-5 h-5" />
+              <span>{client.company_phone}</span>
+            </div>
+          )}
+          {client.address && (
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <MapPin className="w-5 h-5" />
+              <span>{client.address}</span>
+            </div>
+          )}
+          {client.website && (
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <Globe className="w-5 h-5" />
+              <a
+                href={client.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-primary"
+              >
+                {client.website}
+              </a>
+            </div>
+          )}
+          {client.notes && (
+            <div className="pt-3 border-t border-border">
+              <p className="text-sm text-muted-foreground">{client.notes}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Contacts Section */}
+      <Card className="bg-card border-border">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Contacts</CardTitle>
+            <Button onClick={() => setIsAddContactOpen(true)} size="sm">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Contact
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {client.subcontractors.length === 0 ? (
+            <div className="text-center py-8">
+              <User className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground mb-4">No contacts yet</p>
+              <Button onClick={() => setIsAddContactOpen(true)} size="sm">
+                <Plus className="w-4 h-4 mr-2" />
+                Add First Contact
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {client.subcontractors.map((contact) => (
+                <div
+                  key={contact.id}
+                  className="flex items-center justify-between p-4 rounded-lg border border-border hover:border-primary/50 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-foreground">
+                        {contact.name}
+                      </h4>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                        {contact.phone && (
+                          <span className="flex items-center gap-1">
+                            <Phone className="w-3 h-3" />
+                            {contact.phone}
+                          </span>
+                        )}
+                        {contact.email && (
+                          <span className="flex items-center gap-1">
+                            <Mail className="w-3 h-3" />
+                            {contact.email}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <Badge
+                    variant={
+                      contact.status === "active" ? "default" : "secondary"
+                    }
+                  >
+                    {contact.status}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Add Contact Dialog */}
+      <Dialog open={isAddContactOpen} onOpenChange={setIsAddContactOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Contact</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleAddContact} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">
+                Name <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="name"
+                placeholder="John Doe"
+                value={contactForm.name}
+                onChange={(e) =>
+                  setContactForm({ ...contactForm, name: e.target.value })
+                }
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">
+                Phone <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="+1 (555) 123-4567"
+                value={contactForm.phone}
+                onChange={(e) =>
+                  setContactForm({ ...contactForm, phone: e.target.value })
+                }
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">
+                Email <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="john@company.com"
+                value={contactForm.email}
+                onChange={(e) =>
+                  setContactForm({ ...contactForm, email: e.target.value })
+                }
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="company">
+                Position/Role <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="company"
+                placeholder="Project Manager"
+                value={contactForm.company}
+                onChange={(e) =>
+                  setContactForm({ ...contactForm, company: e.target.value })
+                }
+                required
+              />
+            </div>
+
+            <div className="flex gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsAddContactOpen(false)}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  "Add Contact"
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </section>
+  );
+}

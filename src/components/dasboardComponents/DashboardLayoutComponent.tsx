@@ -23,7 +23,7 @@ const navItems = [
   { icon: Calendar, label: "Schedule", path: "/schedule" },
   { icon: Package, label: "Products", path: "/equipment" },
   { icon: Bot, label: "AI Agents", path: "/agents" },
-  { icon: Users, label: "Subcontractors", path: "/subcontractors" },
+  { icon: Users, label: "Clients", path: "/clients" },
   { icon: BarChart3, label: "Analytics", path: "/analytics" },
   { icon: Settings, label: "Settings", path: "/settings" },
 ];

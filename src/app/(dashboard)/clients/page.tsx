@@ -1,0 +1,147 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Plus, Building2, Users, Phone, Mail, Loader2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useRouter } from "next/navigation";
+
+interface Client {
+  id: string;
+  company_name: string;
+  company_email: string | null;
+  company_phone: string | null;
+  address: string | null;
+  website: string | null;
+  status: string;
+  subcontractors_count: number;
+  created_at: string;
+}
+
+export default function ClientsPage() {
+  const router = useRouter();
+  const [clients, setClients] = useState<Client[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchClients = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/clients");
+      const result = await response.json();
+
+      if (result.success && result.clients) {
+        setClients(result.clients);
+      } else {
+        console.error("Failed to fetch clients:", result.error);
+      }
+    } catch (error) {
+      console.error("Error fetching clients:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchClients();
+  }, []);
+
+  return (
+    <section>
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-semibold text-foreground">
+            Clients
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage your client companies and their contacts
+          </p>
+        </div>
+        <Button
+          onClick={() => router.push("/clients/new")}
+          className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto shrink-0"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Add Client
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 text-primary animate-spin" />
+        </div>
+      ) : clients.length === 0 ? (
+        <Card className="bg-card border-border">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Building2 className="w-12 h-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              No clients yet
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Start by adding your first client company
+            </p>
+            <Button onClick={() => router.push("/clients/new")}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Client
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {clients.map((client) => (
+            <Card
+              key={client.id}
+              className="bg-card border-border hover:border-primary/50 transition-colors cursor-pointer"
+              onClick={() => router.push(`/clients/${client.id}`)}
+            >
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Building2 className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">
+                        {client.company_name}
+                      </CardTitle>
+                    </div>
+                  </div>
+                  <Badge
+                    variant={
+                      client.status === "active" ? "default" : "secondary"
+                    }
+                  >
+                    {client.status}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {client.company_email && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Mail className="w-4 h-4" />
+                    <span className="truncate">{client.company_email}</span>
+                  </div>
+                )}
+                {client.company_phone && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Phone className="w-4 h-4" />
+                    <span>{client.company_phone}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2 border-t border-border">
+                  <Users className="w-4 h-4" />
+                  <span>
+                    {client.subcontractors_count}{" "}
+                    {client.subcontractors_count === 1
+                      ? "contact"
+                      : "contacts"}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
