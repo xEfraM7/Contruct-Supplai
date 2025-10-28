@@ -21,13 +21,13 @@ import {
 import { Phone, Loader2, AlertCircle } from "lucide-react";
 import { useAgents } from "@/lib/hooks/use-agents";
 
-interface Agent {
-  id: string;
-  agent_id: string;
-  agent_name: string;
-  voice_id: string;
-  language: string;
-}
+// interface Agent {
+//   id: string;
+//   agent_id: string;
+//   agent_name: string;
+//   voice_id: string;
+//   language: string;
+// }
 
 interface CreateCallDialogProps {
   open: boolean;
@@ -47,7 +47,7 @@ export function CreateCallDialog({
   onCallCreated,
 }: CreateCallDialogProps) {
   const { data: agentsData, isLoading: isLoadingAgents } = useAgents();
-  const agents = agentsData?.agents || [];
+  const agents = agentsData || [];
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fromNumber, setFromNumber] = useState("");
