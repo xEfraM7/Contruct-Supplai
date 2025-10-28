@@ -17,6 +17,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useRouter, usePathname } from "next/navigation";
 import { UserProfile } from "./UserProfile";
+import { QueryProvider } from "@/lib/providers/query-provider";
+import { Toaster } from "sonner";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Overview", path: "/overview" },
@@ -43,9 +45,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   return (
-    <div className="flex h-screen bg-background dark">
-      {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-sidebar border-b border-sidebar-border">
+    <QueryProvider>
+      <Toaster position="top-right" />
+      <div className="flex h-screen bg-background dark">
+        {/* Mobile Header */}
+        <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-sidebar border-b border-sidebar-border">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
@@ -129,10 +133,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <UserProfile />
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8 pt-20 lg:pt-8">
-        {children}
-      </main>
-    </div>
+        {/* Main Content */}
+        <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8 pt-20 lg:pt-8">
+          {children}
+        </main>
+      </div>
+    </QueryProvider>
   );
 }

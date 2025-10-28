@@ -1,50 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, Building2, Users, Phone, Mail, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
-
-interface Client {
-  id: string;
-  company_name: string;
-  company_email: string | null;
-  company_phone: string | null;
-  address: string | null;
-  website: string | null;
-  status: string;
-  subcontractors_count: number;
-  created_at: string;
-}
+import { useClients } from "@/lib/hooks/use-clients";
 
 export default function ClientsPage() {
   const router = useRouter();
-  const [clients, setClients] = useState<Client[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const fetchClients = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/clients");
-      const result = await response.json();
-
-      if (result.success && result.clients) {
-        setClients(result.clients);
-      } else {
-        console.error("Failed to fetch clients:", result.error);
-      }
-    } catch (error) {
-      console.error("Error fetching clients:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchClients();
-  }, []);
+  const { data: clients = [], isLoading } = useClients();
 
   return (
     <section>
@@ -57,13 +22,15 @@ export default function ClientsPage() {
             Manage your client companies and their contacts
           </p>
         </div>
-        <Button
-          onClick={() => router.push("/clients/new")}
-          className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto shrink-0"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Client
-        </Button>
+        {clients.length > 0 && (
+          <Button
+            onClick={() => router.push("/clients/new")}
+            className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto shrink-0"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Client
+          </Button>
+        )}
       </div>
 
       {isLoading ? (

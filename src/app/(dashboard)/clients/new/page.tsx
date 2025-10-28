@@ -1,49 +1,43 @@
 "use client";
 
-import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Loader2 } from "lucide-react";
+import { FormInput, FormTextarea } from "@/components/form";
+import { clientSchema, type ClientFormData } from "@/lib/validations/client";
+import { useCreateClient } from "@/lib/hooks/use-clients";
 
 export default function NewClientPage() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    company_name: "",
-    company_email: "",
-    company_phone: "",
-    address: "",
-    website: "",
-    notes: "",
+  const createClient = useCreateClient();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<ClientFormData>({
+    resolver: zodResolver(clientSchema),
+    mode: "onBlur", // Validate on blur (when user leaves field)
+    reValidateMode: "onChange", // Re-validate on change after first validation
+    defaultValues: {
+      status: "active",
+    },
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
+  const onSubmit = async (data: ClientFormData) => {
     try {
-      const response = await fetch("/api/clients", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
+      const result = await createClient.mutateAsync(data);
+      if (result.client?.id) {
         router.push(`/clients/${result.client.id}`);
       } else {
-        alert(result.error || "Failed to create client");
+        router.push("/clients");
       }
     } catch (error) {
+      // Error is handled by the mutation hook
       console.error("Error creating client:", error);
-      alert("An error occurred");
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -71,99 +65,79 @@ export default function NewClientPage() {
           <CardTitle>Client Information</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="company_name">
-                Company Name <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="company_name"
-                placeholder="e.g., ABC Construction Inc."
-                value={formData.company_name}
-                onChange={(e) =>
-                  setFormData({ ...formData, company_name: e.target.value })
-                }
-                required
-              />
-            </div>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <FormInput
+              id="company_name"
+              label="Company Name"
+              placeholder="e.g., ABC Construction Inc."
+              required
+              error={errors.company_name?.message}
+              disabled={isSubmitting}
+              {...register("company_name")}
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="company_email">Company Email</Label>
-                <Input
-                  id="company_email"
-                  type="email"
-                  placeholder="contact@company.com"
-                  value={formData.company_email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, company_email: e.target.value })
-                  }
-                />
-              </div>
+              <FormInput
+                id="company_email"
+                label="Company Email"
+                type="email"
+                placeholder="contact@company.com"
+                error={errors.company_email?.message}
+                disabled={isSubmitting}
+                {...register("company_email")}
+              />
 
-              <div className="space-y-2">
-                <Label htmlFor="company_phone">Company Phone</Label>
-                <Input
-                  id="company_phone"
-                  type="tel"
-                  placeholder="+1 (555) 123-4567"
-                  value={formData.company_phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, company_phone: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="address">Address</Label>
-              <Input
-                id="address"
-                placeholder="123 Main St, City, State, ZIP"
-                value={formData.address}
-                onChange={(e) =>
-                  setFormData({ ...formData, address: e.target.value })
-                }
+              <FormInput
+                id="company_phone"
+                label="Company Phone"
+                type="tel"
+                placeholder="+1 (555) 123-4567"
+                error={errors.company_phone?.message}
+                disabled={isSubmitting}
+                {...register("company_phone")}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="website">Website</Label>
-              <Input
-                id="website"
-                type="url"
-                placeholder="https://www.company.com"
-                value={formData.website}
-                onChange={(e) =>
-                  setFormData({ ...formData, website: e.target.value })
-                }
-              />
-            </div>
+            <FormInput
+              id="address"
+              label="Address"
+              placeholder="123 Main St, City, State, ZIP"
+              error={errors.address?.message}
+              disabled={isSubmitting}
+              {...register("address")}
+            />
 
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea
-                id="notes"
-                placeholder="Additional notes about this client..."
-                rows={4}
-                value={formData.notes}
-                onChange={(e) =>
-                  setFormData({ ...formData, notes: e.target.value })
-                }
-              />
-            </div>
+            <FormInput
+              id="website"
+              label="Website"
+              type="url"
+              placeholder="https://www.company.com"
+              error={errors.website?.message}
+              disabled={isSubmitting}
+              {...register("website")}
+            />
+
+            <FormTextarea
+              id="notes"
+              label="Notes"
+              placeholder="Additional notes about this client..."
+              rows={4}
+              error={errors.notes?.message}
+              disabled={isSubmitting}
+              {...register("notes")}
+            />
 
             <div className="flex gap-2 pt-4">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => router.push("/clients")}
-                disabled={isLoading}
+                disabled={isSubmitting}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? (
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Creating...
