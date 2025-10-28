@@ -1,17 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-
-interface Equipment {
-  id: string;
-  name: string;
-  tag: string;
-  category: string;
-  status: string;
-  location: string | null;
-  value: number;
-  quantity: number;
-  created_at: string;
-}
+import type { Equipment } from "@/types/equipment";
 
 // Fetch equipment
 export function useEquipment() {
@@ -28,12 +17,25 @@ export function useEquipment() {
   });
 }
 
+interface CreateEquipmentData {
+  name: string;
+  tag: string;
+  category: string;
+  status?: string;
+  location?: string;
+  value: number;
+  quantity: number;
+  purchase_date?: string;
+  next_maintenance?: string;
+  notes?: string;
+}
+
 // Create equipment
 export function useCreateEquipment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (equipmentData: Record<string, unknown>) => {
+    mutationFn: async (equipmentData: CreateEquipmentData) => {
       const response = await fetch("/api/equipment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

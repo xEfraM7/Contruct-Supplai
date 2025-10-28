@@ -14,7 +14,7 @@ interface UserSettings {
   email: string;
 }
 
-export function SettingsComponent() {
+export default function SettingsMainComponent() {
   const [settings, setSettings] = useState<UserSettings>({
     companyName: "",
     licenseNumber: "",
