@@ -1,12 +1,11 @@
 'use client';
 
-import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from 'sonner';
+import { useCreateAgentDialog } from '@/hooks/useCreateAgentDialog';
 
 interface CreateAgentDialogProps {
   open: boolean;
@@ -15,60 +14,12 @@ interface CreateAgentDialogProps {
 }
 
 export function CreateAgentDialog({ open, onOpenChange, onSuccess }: CreateAgentDialogProps) {
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    agent_name: '',
-    voice_id: '11labs-Adrian',
-    language: 'es-ES',
-  });
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.agent_name) {
-      toast.error('Please enter an agent name');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      // Enviar con configuración automática
-      const payload = {
-        agent_name: formData.agent_name,
-        voice_id: formData.voice_id,
-        voice_model: 'eleven_multilingual_v2', // Siempre multilingual
-        language: formData.language,
-        auto_create_llm: true, // Flag para crear LLM automáticamente si no existe
-      };
-
-      const response = await fetch('/api/agents', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        toast.success('Agent created successfully');
-        onSuccess();
-        onOpenChange(false);
-        setFormData({
-          agent_name: '',
-          voice_id: '11labs-Adrian',
-          language: 'es-ES',
-        });
-      } else {
-        toast.error(data.error || 'Error creating agent');
-      }
-    } catch (error) {
-      console.error('Error creating agent:', error);
-      toast.error('Error creating agent');
-    } finally {
-      setLoading(false);
-    }
+  const handleSuccess = () => {
+    onSuccess();
+    onOpenChange(false);
   };
+
+  const { loading, formData, handleSubmit, handleChange } = useCreateAgentDialog(handleSuccess);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -82,7 +33,7 @@ export function CreateAgentDialog({ open, onOpenChange, onSuccess }: CreateAgent
             <Input
               id="agent_name"
               value={formData.agent_name}
-              onChange={(e) => setFormData({ ...formData, agent_name: e.target.value })}
+              onChange={(e) => handleChange('agent_name', e.target.value)}
               placeholder="e.g., Construction Assistant"
               required
               autoFocus
@@ -93,7 +44,7 @@ export function CreateAgentDialog({ open, onOpenChange, onSuccess }: CreateAgent
             <Label htmlFor="voice_id">Voice</Label>
             <Select
               value={formData.voice_id}
-              onValueChange={(value) => setFormData({ ...formData, voice_id: value })}
+              onValueChange={(value) => handleChange('voice_id', value)}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -112,7 +63,7 @@ export function CreateAgentDialog({ open, onOpenChange, onSuccess }: CreateAgent
             <Label htmlFor="language">Language</Label>
             <Select
               value={formData.language}
-              onValueChange={(value) => setFormData({ ...formData, language: value })}
+              onValueChange={(value) => handleChange('language', value)}
             >
               <SelectTrigger>
                 <SelectValue />

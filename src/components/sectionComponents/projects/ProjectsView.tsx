@@ -1,6 +1,4 @@
-"use client";
-
-import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   FileText,
@@ -18,108 +16,42 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { CreateProjectModal } from "@/components/modals/CreateProjectModal";
-import { useDashboardMetrics } from "@/lib/hooks/use-dashboard-metrics";
-import { useProjects, useDeleteProject } from "@/lib/hooks/use-projects";
 import { formatDate, getDateStatus } from "@/lib/utils/dateUtils";
-import { useConfirm } from "@/hooks/use-confirm";
+import type { Project } from "@/types/project";
 
-interface Project {
-  id: string;
-  name: string;
-  clientName?: string;
-  address: string;
-  clientPhone?: string;
-  clientEmail?: string;
-  startDate?: string;
-  estimatedEndDate?: string;
-  estimatedBudget?: number;
-  description?: string;
-  status?: string;
-  completionPercentage?: number;
-  actualEndDate?: string;
-  createdAt: string;
-  updatedAt: string;
+interface ProjectsViewProps {
+  projects: Project[];
+  isLoading: boolean;
+  metrics?: {
+    activeContracts: number;
+    totalBudget: number;
+    onTimeDelivery: number;
+  };
+  metricsLoading: boolean;
+  isModalOpen: boolean;
+  expandedProjects: Set<string>;
+  onOpenModal: (open: boolean) => void;
+  onToggleProject: (projectId: string, e?: React.MouseEvent) => void;
+  onDeleteClick: (project: Project, e: React.MouseEvent) => void;
+  calculateProgress: (project: Project) => number;
+  getStatusColor: (status?: string) => string;
 }
 
-export function DashboardOverviewComponent() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(
-    new Set()
-  );
-  const { confirm, ConfirmDialog } = useConfirm();
-
-  // Get dashboard metrics
-  const { data: metrics, isLoading: metricsLoading } = useDashboardMetrics();
-  
-  // Get projects
-  const { data: projects = [], isLoading } = useProjects();
-  const deleteProject = useDeleteProject();
-
-  // Calculate project progress based on dates
-  const calculateProgress = (project: Project): number => {
-    if (project.completionPercentage !== undefined && project.completionPercentage > 0) {
-      return project.completionPercentage;
-    }
-    
-    if (!project.startDate || !project.estimatedEndDate) {
-      return 0;
-    }
-    
-    const startDate = new Date(project.startDate);
-    const endDate = new Date(project.estimatedEndDate);
-    const currentDate = new Date();
-    
-    if (currentDate < startDate) return 0;
-    if (currentDate > endDate) return 100;
-    
-    const totalDuration = endDate.getTime() - startDate.getTime();
-    const elapsed = currentDate.getTime() - startDate.getTime();
-    
-    return Math.round((elapsed / totalDuration) * 100);
-  };
-
-  // Get status color
-  const getStatusColor = (status?: string) => {
-    switch (status) {
-      case 'completed': return 'bg-green-100 text-green-800';
-      case 'on_hold': return 'bg-yellow-100 text-yellow-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-blue-100 text-blue-800';
-    }
-  };
-
-  const toggleProject = (projectId: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    setExpandedProjects((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(projectId)) {
-        newSet.delete(projectId);
-      } else {
-        newSet.add(projectId);
-      }
-      return newSet;
-    });
-  };
-
-  const handleDeleteClick = async (project: Project, e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    const confirmed = await confirm({
-      title: "Delete Project",
-      description: "Are you sure you want to delete this project? All associated data will be permanently removed.",
-      confirmText: "Delete Project",
-      cancelText: "Cancel",
-      variant: "destructive",
-    });
-
-    if (confirmed) {
-      deleteProject.mutate(project.id);
-    }
-  };
-
+export function ProjectsView({
+  projects,
+  isLoading,
+  metrics,
+  metricsLoading,
+  isModalOpen,
+  expandedProjects,
+  onOpenModal,
+  onToggleProject,
+  onDeleteClick,
+  calculateProgress,
+  getStatusColor,
+}: ProjectsViewProps) {
   return (
     <section>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -127,7 +59,7 @@ export function DashboardOverviewComponent() {
           Dashboard Overview
         </h2>
         <Button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => onOpenModal(true)}
           className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto"
         >
           <Plus className="w-4 h-4 mr-2" />
@@ -137,14 +69,12 @@ export function DashboardOverviewComponent() {
 
       <CreateProjectModal
         open={isModalOpen}
-        onOpenChange={setIsModalOpen}
-        onProjectCreated={() => setIsModalOpen(false)}
+        onOpenChange={onOpenModal}
+        onProjectCreated={() => onOpenModal(false)}
       />
-      <ConfirmDialog />
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        {/* Active Contracts */}
         <Card className="bg-card border-border">
           <CardContent className="p-6">
             <div className="flex items-start justify-between">
@@ -166,7 +96,6 @@ export function DashboardOverviewComponent() {
           </CardContent>
         </Card>
 
-        {/* Total Budget */}
         <Card className="bg-card border-border">
           <CardContent className="p-6">
             <div className="flex items-start justify-between">
@@ -175,7 +104,9 @@ export function DashboardOverviewComponent() {
                   Total Budget
                 </p>
                 <p className="text-3xl font-bold text-card-foreground">
-                  {metricsLoading ? "..." : `$${(metrics?.totalBudget ?? 0).toLocaleString()}`}
+                  {metricsLoading
+                    ? "..."
+                    : `$${(metrics?.totalBudget ?? 0).toLocaleString()}`}
                 </p>
                 <p className="text-xs mt-2 text-muted-foreground">
                   Combined active projects budget
@@ -188,7 +119,6 @@ export function DashboardOverviewComponent() {
           </CardContent>
         </Card>
 
-        {/* On Time Delivery */}
         <Card className="bg-card border-border">
           <CardContent className="p-6">
             <div className="flex items-start justify-between">
@@ -211,7 +141,7 @@ export function DashboardOverviewComponent() {
         </Card>
       </div>
 
-      {/* Recent Projects */}
+      {/* Projects List */}
       <Card className="bg-card border-border">
         <CardHeader>
           <CardTitle className="text-card-foreground">
@@ -237,10 +167,9 @@ export function DashboardOverviewComponent() {
                     className="bg-muted/30 border-border hover:bg-muted/50 hover:border-primary/50 transition-all group"
                   >
                     <CardContent>
-                      {/* Header - Always Visible */}
-                      <div 
+                      <div
                         className="flex items-start justify-between cursor-pointer"
-                        onClick={() => toggleProject(project.id)}
+                        onClick={() => onToggleProject(project.id)}
                       >
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
@@ -248,23 +177,27 @@ export function DashboardOverviewComponent() {
                               {project.name}
                             </h3>
                             <Badge className={getStatusColor(project.status)}>
-                              {project.status ? 
-                                project.status.charAt(0).toUpperCase() + project.status.slice(1) : 
-                                'Active'
-                              }
+                              {project.status
+                                ? project.status.charAt(0).toUpperCase() +
+                                  project.status.slice(1)
+                                : "Active"}
                             </Badge>
                           </div>
-                          
-                          {/* Progress Bar */}
-                          {project.status === 'active' && (
+
+                          {project.status === "active" && (
                             <div className="mb-3">
                               <div className="flex justify-between items-center mb-1">
-                                <span className="text-xs text-muted-foreground">Progress</span>
+                                <span className="text-xs text-muted-foreground">
+                                  Progress
+                                </span>
                                 <span className="text-xs text-muted-foreground">
                                   {calculateProgress(project)}%
                                 </span>
                               </div>
-                              <Progress value={calculateProgress(project)} className="h-2" />
+                              <Progress
+                                value={calculateProgress(project)}
+                                className="h-2"
+                              />
                             </div>
                           )}
                           <p className="text-sm text-muted-foreground flex items-center gap-2">
@@ -283,7 +216,7 @@ export function DashboardOverviewComponent() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={(e) => handleDeleteClick(project, e)}
+                            onClick={(e) => onDeleteClick(project, e)}
                             className="text-muted-foreground hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -291,10 +224,8 @@ export function DashboardOverviewComponent() {
                         </div>
                       </div>
 
-                      {/* Collapsible Details */}
                       {isExpanded && (
                         <>
-                          {/* Project Details Grid */}
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 pt-4 border-t border-border">
                             {project.clientName && (
                               <div className="flex items-center gap-2 text-sm">
@@ -362,9 +293,17 @@ export function DashboardOverviewComponent() {
                                   <p className="font-medium text-card-foreground">
                                     {formatDate(project.estimatedEndDate)}
                                   </p>
-                                  {project.status === 'active' && (
-                                    <p className={`text-xs ${getDateStatus(project.estimatedEndDate).color}`}>
-                                      {getDateStatus(project.estimatedEndDate).message}
+                                  {project.status === "active" && (
+                                    <p
+                                      className={`text-xs ${
+                                        getDateStatus(project.estimatedEndDate)
+                                          .color
+                                      }`}
+                                    >
+                                      {
+                                        getDateStatus(project.estimatedEndDate)
+                                          .message
+                                      }
                                     </p>
                                   )}
                                 </div>
@@ -387,21 +326,8 @@ export function DashboardOverviewComponent() {
                                 </div>
                               </div>
                             )}
-
-                            <div className="flex items-center gap-2 text-sm">
-                              <Calendar className="w-4 h-4 text-muted-foreground" />
-                              <div>
-                                <p className="text-xs text-muted-foreground">
-                                  Created
-                                </p>
-                                <p className="font-medium text-card-foreground">
-                                  {formatDate(project.createdAt)}
-                                </p>
-                              </div>
-                            </div>
                           </div>
 
-                          {/* Description */}
                           {project.description && (
                             <div className="mt-4 pt-4 border-t border-border">
                               <p className="text-xs text-muted-foreground mb-1">
@@ -413,7 +339,6 @@ export function DashboardOverviewComponent() {
                             </div>
                           )}
 
-                          {/* Action Button */}
                           <div className="mt-4 pt-4 border-t border-border flex justify-end">
                             <Button
                               onClick={(e) => {

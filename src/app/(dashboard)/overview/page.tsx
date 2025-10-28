@@ -1,5 +1,5 @@
-import { DashboardOverviewComponent } from "@/components/sectionComponents/DashboardOverviewComponent";
+import ProjectsMainComponent from "@/components/sectionComponents/projects/ProjectsMainComponent";
 
 export default function OverviewPage() {
-  return <DashboardOverviewComponent />;
+  return <ProjectsMainComponent />;
 }

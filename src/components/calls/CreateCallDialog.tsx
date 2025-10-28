@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Phone, Loader2, AlertCircle } from "lucide-react";
+import { useAgents } from "@/lib/hooks/use-agents";
 
 interface Agent {
   id: string;
@@ -45,27 +46,13 @@ export function CreateCallDialog({
   subcontractorPhone,
   onCallCreated,
 }: CreateCallDialogProps) {
+  const { data: agentsData, isLoading: isLoadingAgents } = useAgents();
+  const agents = agentsData?.agents || [];
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoadingAgents, setIsLoadingAgents] = useState(false);
   const [fromNumber, setFromNumber] = useState("");
   const [selectedAgentId, setSelectedAgentId] = useState("");
-  const [agents, setAgents] = useState<Agent[]>([]);
   const [error, setError] = useState("");
-
-  const fetchAgents = async () => {
-    setIsLoadingAgents(true);
-    try {
-      const response = await fetch("/api/agents");
-      const result = await response.json();
-      if (result.agents) {
-        setAgents(result.agents);
-      }
-    } catch (error) {
-      console.error("Error fetching agents:", error);
-    } finally {
-      setIsLoadingAgents(false);
-    }
-  };
 
   const fetchPhoneNumber = async () => {
     try {
@@ -81,7 +68,6 @@ export function CreateCallDialog({
 
   useEffect(() => {
     if (open) {
-      fetchAgents();
       fetchPhoneNumber();
     }
   }, [open]);

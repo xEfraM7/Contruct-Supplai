@@ -1,17 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-
-interface Equipment {
-  id: string;
-  name: string;
-  tag: string;
-  category: string;
-  status: string;
-  location: string | null;
-  value: number;
-  quantity: number;
-  created_at: string;
-}
+import type { Equipment } from "@/types/equipment";
 
 // Fetch equipment
 export function useEquipment() {

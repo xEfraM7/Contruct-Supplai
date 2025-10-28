@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Equipment } from "@/lib/actions/equipment-actions";
+import type { Equipment } from "@/types/equipment";
 
 interface EquipmentTableProps {
   equipment: Equipment[];
