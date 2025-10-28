@@ -11,7 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Equipment } from "@/lib/actions/equipment-actions";
+import type { Equipment } from "@/types/equipment";
+import { themeColors } from "@/lib/theme";
 
 interface EquipmentTableProps {
   equipment: Equipment[];
@@ -35,14 +36,14 @@ export function EquipmentTable({ equipment }: EquipmentTableProps) {
     switch (status) {
       case "available":
         return (
-          <Badge className="bg-green-100 text-green-700 border-green-200">
-            Available
+          <Badge className={themeColors.equipmentStatus.available.badge}>
+            {themeColors.equipmentStatus.available.label}
           </Badge>
         );
       case "checked_out":
         return (
-          <Badge className="bg-orange-100 text-orange-700 border-orange-200">
-            Checked Out
+          <Badge className={themeColors.equipmentStatus.checked_out.badge}>
+            {themeColors.equipmentStatus.checked_out.label}
           </Badge>
         );
       case "maintenance":

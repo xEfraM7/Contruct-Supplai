@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TrendingUp, TrendingDown, DollarSign, Wallet, CreditCard } from "lucide-react"
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
+import { themeColors } from "@/lib/theme"
 
 const revenueData = [
   { month: "Jan", revenue: 45000, spending: 32000 },
@@ -35,11 +36,11 @@ export function AnalyticsComponent() {
                   <p className="text-3xl font-bold text-card-foreground">{metric.value}</p>
                   <div className="flex items-center gap-1 mt-2">
                     {metric.trend === "up" ? (
-                      <TrendingUp className="w-4 h-4 text-green-500" />
+                      <TrendingUp className={`w-4 h-4 ${themeColors.status.success.icon}`} />
                     ) : (
-                      <TrendingDown className="w-4 h-4 text-red-500" />
+                      <TrendingDown className={`w-4 h-4 ${themeColors.status.error.icon}`} />
                     )}
-                    <span className={`text-sm ${metric.trend === "up" ? "text-green-500" : "text-red-500"}`}>
+                    <span className={`text-sm ${metric.trend === "up" ? themeColors.status.success.text : themeColors.status.error.text}`}>
                       {metric.change}
                     </span>
                   </div>

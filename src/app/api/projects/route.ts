@@ -117,19 +117,19 @@ export async function POST(request: Request) {
       );
     }
 
-    // Crear proyecto
+    // Crear proyecto - convertir campos vacíos a null
     const { data: project, error } = await supabase
       .from('project')
       .insert({
         name,
         client_name,
         address,
-        client_phone,
-        client_email,
-        start_date,
-        estimated_end_date,
-        estimated_budget,
-        description,
+        client_phone: client_phone || null,
+        client_email: client_email || null,
+        start_date: start_date || null,
+        estimated_end_date: estimated_end_date || null,
+        estimated_budget: estimated_budget ? Number(estimated_budget) : null,
+        description: description || null,
         user_id: user.id,
       })
       .select()

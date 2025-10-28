@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import {
   Dialog,
@@ -10,10 +11,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { DateInput } from "@/components/ui/date-input";
+import { FormInput, FormTextarea, FormDateInput } from "@/components/form";
+import { projectSchema, type ProjectFormData } from "@/lib/validations/project";
+import { useCreateProject } from "@/lib/hooks/use-projects";
 
 interface CreateProjectModalProps {
   open: boolean;
@@ -27,79 +27,37 @@ export function CreateProjectModal({
   onProjectCreated,
 }: CreateProjectModalProps) {
   const router = useRouter();
-  const [projectName, setProjectName] = useState("");
-  const [clientName, setClientName] = useState("");
-  const [projectAddress, setProjectAddress] = useState("");
-  const [clientPhone, setClientPhone] = useState("");
-  const [clientEmail, setClientEmail] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [estimatedEndDate, setEstimatedEndDate] = useState("");
-  const [estimatedBudget, setEstimatedBudget] = useState("");
-  const [projectDescription, setProjectDescription] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const createProject = useCreateProject();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+  } = useForm<ProjectFormData>({
+    resolver: zodResolver(projectSchema),
+    mode: "onBlur", // Validate on blur (when user leaves field)
+    reValidateMode: "onChange", // Re-validate on change after first validation
+  });
 
-    if (!projectName.trim() || !clientName.trim() || !projectAddress.trim()) {
-      setError("Please fill in required fields (Project Name, Client Name, Project Address)");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
+  const onSubmit = async (data: ProjectFormData) => {
     try {
-      const res = await fetch("/api/projects", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: projectName,
-          client_name: clientName,
-          address: projectAddress,
-          client_phone: clientPhone,
-          client_email: clientEmail,
-          start_date: startDate,
-          estimated_end_date: estimatedEndDate,
-          estimated_budget: estimatedBudget,
-          description: projectDescription,
-        }),
-      });
+      const result = await createProject.mutateAsync(data);
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to create project");
-      }
-
-      // Reset form
-      setProjectName("");
-      setClientName("");
-      setProjectAddress("");
-      setClientPhone("");
-      setClientEmail("");
-      setStartDate("");
-      setEstimatedEndDate("");
-      setEstimatedBudget("");
-      setProjectDescription("");
+      reset();
       onOpenChange(false);
 
-      // Notify parent component
       if (onProjectCreated) {
         onProjectCreated();
       }
 
       // Redirect to blueprints with the new project ID
-      if (data.project?.id) {
-        router.push(`/blueprints/${data.project.id}`);
+      if (result.project?.id) {
+        router.push(`/blueprints/${result.project.id}`);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      // Error is handled by the mutation hook
+      console.error("Error creating project:", error);
     }
   };
 
@@ -109,145 +67,111 @@ export function CreateProjectModal({
         <DialogHeader>
           <DialogTitle>Create New Project</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Project Name */}
-              <div className="grid gap-2">
-                <Label htmlFor="projectName">
-                  Project Name <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="projectName"
-                  placeholder="Enter project name"
-                  value={projectName}
-                  onChange={(e) => setProjectName(e.target.value)}
-                  disabled={loading}
-                />
-              </div>
+              <FormInput
+                id="projectName"
+                label="Project Name"
+                placeholder="Enter project name"
+                required
+                error={errors.name?.message}
+                disabled={isSubmitting}
+                {...register("name")}
+              />
 
-              {/* Client Name */}
-              <div className="grid gap-2">
-                <Label htmlFor="clientName">
-                  Client Name <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="clientName"
-                  placeholder="Enter client name"
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                  disabled={loading}
-                />
-              </div>
+              <FormInput
+                id="clientName"
+                label="Client Name"
+                placeholder="Enter client name"
+                required
+                error={errors.client_name?.message}
+                disabled={isSubmitting}
+                {...register("client_name")}
+              />
             </div>
 
-            {/* Project Address */}
-            <div className="grid gap-2">
-              <Label htmlFor="projectAddress">
-                Project Address <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="projectAddress"
-                placeholder="Enter project address"
-                value={projectAddress}
-                onChange={(e) => setProjectAddress(e.target.value)}
-                disabled={loading}
+            <FormInput
+              id="projectAddress"
+              label="Project Address"
+              placeholder="Enter project address"
+              required
+              error={errors.address?.message}
+              disabled={isSubmitting}
+              {...register("address")}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormInput
+                id="clientPhone"
+                label="Client Phone"
+                type="tel"
+                placeholder="Enter client phone"
+                error={errors.client_phone?.message}
+                disabled={isSubmitting}
+                {...register("client_phone")}
+              />
+
+              <FormInput
+                id="clientEmail"
+                label="Client Email"
+                type="email"
+                placeholder="Enter client email"
+                error={errors.client_email?.message}
+                disabled={isSubmitting}
+                {...register("client_email")}
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Client Phone */}
-              <div className="grid gap-2">
-                <Label htmlFor="clientPhone">Client Phone</Label>
-                <Input
-                  id="clientPhone"
-                  type="tel"
-                  placeholder="Enter client phone"
-                  value={clientPhone}
-                  onChange={(e) => setClientPhone(e.target.value)}
-                  disabled={loading}
-                />
-              </div>
+              <FormDateInput
+                id="startDate"
+                label="Start Date"
+                error={errors.start_date?.message}
+                disabled={isSubmitting}
+                {...register("start_date")}
+              />
 
-              {/* Client Email */}
-              <div className="grid gap-2">
-                <Label htmlFor="clientEmail">Client Email</Label>
-                <Input
-                  id="clientEmail"
-                  type="email"
-                  placeholder="Enter client email"
-                  value={clientEmail}
-                  onChange={(e) => setClientEmail(e.target.value)}
-                  disabled={loading}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Start Date */}
-              <div className="grid gap-2">
-                <Label htmlFor="startDate">Start Date</Label>
-                <DateInput
-                  id="startDate"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  disabled={loading}
-                />
-              </div>
-
-              {/* Estimated End Date */}
-              <div className="grid gap-2">
-                <Label htmlFor="estimatedEndDate">Estimated End Date</Label>
-                <DateInput
-                  id="estimatedEndDate"
-                  value={estimatedEndDate}
-                  onChange={(e) => setEstimatedEndDate(e.target.value)}
-                  disabled={loading}
-                />
-              </div>
-            </div>
-
-            {/* Estimated Budget */}
-            <div className="grid gap-2">
-              <Label htmlFor="estimatedBudget">Estimated Budget</Label>
-              <Input
-                id="estimatedBudget"
-                type="number"
-                placeholder="Enter budget"
-                value={estimatedBudget}
-                onChange={(e) => setEstimatedBudget(e.target.value)}
-                disabled={loading}
+              <FormDateInput
+                id="estimatedEndDate"
+                label="Estimated End Date"
+                error={errors.estimated_end_date?.message}
+                disabled={isSubmitting}
+                {...register("estimated_end_date")}
               />
             </div>
 
-            {/* Project Description */}
-            <div className="grid gap-2">
-              <Label htmlFor="projectDescription">Project Description</Label>
-              <Textarea
-                id="projectDescription"
-                placeholder="Enter project description"
-                rows={4}
-                value={projectDescription}
-                onChange={(e) => setProjectDescription(e.target.value)}
-                disabled={loading}
-              />
-            </div>
+            <FormInput
+              id="estimatedBudget"
+              label="Estimated Budget"
+              type="number"
+              placeholder="Enter budget"
+              error={errors.estimated_budget?.message}
+              disabled={isSubmitting}
+              {...register("estimated_budget")}
+            />
 
-            {error && (
-              <p className="text-sm text-red-600">{error}</p>
-            )}
+            <FormTextarea
+              id="projectDescription"
+              label="Project Description"
+              placeholder="Enter project description"
+              rows={4}
+              error={errors.description?.message}
+              disabled={isSubmitting}
+              {...register("description")}
+            />
           </div>
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={loading}
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Creating..." : "Create Project"}
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Creating..." : "Create Project"}
             </Button>
           </DialogFooter>
         </form>

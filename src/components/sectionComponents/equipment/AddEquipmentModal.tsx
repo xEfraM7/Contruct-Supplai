@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Dialog,
   DialogContent,
@@ -9,19 +10,18 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { DateInput } from "@/components/ui/date-input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { createEquipment } from "@/lib/actions/equipment-actions";
 import { Loader2 } from "lucide-react";
+import {
+  FormInput,
+  FormTextarea,
+  FormDateInput,
+  FormSelect,
+} from "@/components/form";
+import {
+  equipmentSchema,
+  type EquipmentFormData,
+} from "@/lib/validations/equipment";
+import { useCreateEquipment } from "@/lib/hooks/use-equipment";
 
 interface AddEquipmentModalProps {
   open: boolean;
@@ -30,14 +30,20 @@ interface AddEquipmentModalProps {
 }
 
 const categories = [
-  "Aerial",
-  "Survey",
-  "Heavy Machinery",
-  "Power Tools",
-  "Hand Tools",
-  "Safety Equipment",
-  "Vehicles",
-  "Other",
+  { value: "Aerial", label: "Aerial" },
+  { value: "Survey", label: "Survey" },
+  { value: "Heavy Machinery", label: "Heavy Machinery" },
+  { value: "Power Tools", label: "Power Tools" },
+  { value: "Hand Tools", label: "Hand Tools" },
+  { value: "Safety Equipment", label: "Safety Equipment" },
+  { value: "Vehicles", label: "Vehicles" },
+  { value: "Other", label: "Other" },
+];
+
+const statusOptions = [
+  { value: "available", label: "Available" },
+  { value: "checked_out", label: "Checked Out" },
+  { value: "maintenance", label: "Maintenance" },
 ];
 
 export function AddEquipmentModal({
@@ -45,62 +51,45 @@ export function AddEquipmentModal({
   onOpenChange,
   onEquipmentCreated,
 }: AddEquipmentModalProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    tag: "",
-    category: "",
-    status: "available" as "available" | "checked_out" | "maintenance",
-    location: "",
-    value: "",
-    quantity: "1",
-    purchase_date: "",
-    next_maintenance: "",
-    notes: "",
+  const createEquipment = useCreateEquipment();
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors, isSubmitting },
+    reset,
+  } = useForm<EquipmentFormData>({
+    resolver: zodResolver(equipmentSchema),
+    mode: "onBlur", // Validate on blur (when user leaves field)
+    reValidateMode: "onChange", // Re-validate on change after first validation
+    defaultValues: {
+      status: "available",
+      quantity: "1",
+    },
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
+  const onSubmit = async (data: EquipmentFormData) => {
     try {
-      const result = await createEquipment({
-        name: formData.name,
-        tag: formData.tag,
-        category: formData.category,
-        status: formData.status,
-        location: formData.location || undefined,
-        value: parseFloat(formData.value),
-        quantity: parseInt(formData.quantity) || 1,
-        purchase_date: formData.purchase_date || undefined,
-        next_maintenance: formData.next_maintenance || undefined,
-        notes: formData.notes || undefined,
+      await createEquipment.mutateAsync({
+        name: data.name,
+        tag: data.tag,
+        category: data.category,
+        status: data.status,
+        location: data.location || undefined,
+        value: parseFloat(data.value),
+        quantity: parseInt(data.quantity) || 1,
+        purchase_date: data.purchase_date || undefined,
+        next_maintenance: data.next_maintenance || undefined,
+        notes: data.notes || undefined,
       });
 
-      if (result.success) {
-        onEquipmentCreated();
-        onOpenChange(false);
-        // Reset form
-        setFormData({
-          name: "",
-          tag: "",
-          category: "",
-          status: "available",
-          location: "",
-          value: "",
-          quantity: "1",
-          purchase_date: "",
-          next_maintenance: "",
-          notes: "",
-        });
-      } else {
-        alert(result.error || "Failed to create equipment");
-      }
+      onEquipmentCreated();
+      onOpenChange(false);
+      reset();
     } catch (error) {
+      // Error is handled by the mutation hook
       console.error("Error creating equipment:", error);
-      alert("An error occurred");
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -110,195 +99,144 @@ export function AddEquipmentModal({
         <DialogHeader>
           <DialogTitle>Add New Equipment</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           <div className="grid gap-4 py-4">
-            {/* Name */}
-            <div className="grid gap-2">
-              <Label htmlFor="name">
-                Equipment Name <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="name"
-                placeholder="e.g., Scissor Lift 19ft"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
+            <FormInput
+              id="name"
+              label="Equipment Name"
+              placeholder="e.g., Scissor Lift 19ft"
+              required
+              error={errors.name?.message}
+              disabled={isSubmitting}
+              {...register("name")}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormInput
+                id="tag"
+                label="Asset Tag"
+                placeholder="e.g., EQ-001"
                 required
+                error={errors.tag?.message}
+                disabled={isSubmitting}
+                {...register("tag")}
+              />
+
+              <Controller
+                name="category"
+                control={control}
+                render={({ field }) => (
+                  <FormSelect
+                    id="category"
+                    label="Category"
+                    placeholder="Select category"
+                    required
+                    options={categories}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    error={errors.category?.message}
+                    disabled={isSubmitting}
+                  />
+                )}
               />
             </div>
 
-            {/* Tag and Category */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="tag">
-                  Asset Tag <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="tag"
-                  placeholder="e.g., EQ-001"
-                  value={formData.tag}
-                  onChange={(e) =>
-                    setFormData({ ...formData, tag: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="category">
-                  Category <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value: string) =>
-                    setFormData({ ...formData, category: value })
-                  }
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <Controller
+                name="status"
+                control={control}
+                render={({ field }) => (
+                  <FormSelect
+                    id="status"
+                    label="Status"
+                    options={statusOptions}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    error={errors.status?.message}
+                    disabled={isSubmitting}
+                  />
+                )}
+              />
+
+              <FormInput
+                id="location"
+                label="Location"
+                placeholder="e.g., Downtown Office"
+                error={errors.location?.message}
+                disabled={isSubmitting}
+                {...register("location")}
+              />
             </div>
 
-            {/* Status and Location */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="status">Status</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value: string) =>
-                    setFormData({ ...formData, status: value as "available" | "checked_out" | "maintenance" })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="available">Available</SelectItem>
-                    <SelectItem value="checked_out">Checked Out</SelectItem>
-                    <SelectItem value="maintenance">Maintenance</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="location">Location</Label>
-                <Input
-                  id="location"
-                  placeholder="e.g., Downtown Office"
-                  value={formData.location}
-                  onChange={(e) =>
-                    setFormData({ ...formData, location: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-
-            {/* Value, Quantity and Purchase Date */}
             <div className="grid grid-cols-3 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="value">
-                  Value ($) <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="value"
-                  type="number"
-                  step="0.01"
-                  placeholder="e.g., 15000"
-                  value={formData.value}
-                  onChange={(e) =>
-                    setFormData({ ...formData, value: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="quantity">
-                  Quantity <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="quantity"
-                  type="number"
-                  min="1"
-                  placeholder="1"
-                  value={formData.quantity}
-                  onChange={(e) =>
-                    setFormData({ ...formData, quantity: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="purchase_date">Purchase Date</Label>
-                <DateInput
-                  id="purchase_date"
-                  value={formData.purchase_date}
-                  onChange={(e) =>
-                    setFormData({ ...formData, purchase_date: e.target.value })
-                  }
-                />
-              </div>
-            </div>
+              <FormInput
+                id="value"
+                label="Value ($)"
+                type="number"
+                step="0.01"
+                placeholder="e.g., 15000"
+                required
+                error={errors.value?.message}
+                disabled={isSubmitting}
+                {...register("value")}
+              />
 
-            {/* Next Maintenance */}
-            <div className="grid gap-2">
-              <Label htmlFor="next_maintenance">Next Maintenance Date</Label>
-              <DateInput
-                id="next_maintenance"
-                value={formData.next_maintenance}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    next_maintenance: e.target.value,
-                  })
-                }
+              <FormInput
+                id="quantity"
+                label="Quantity"
+                type="number"
+                min="1"
+                placeholder="1"
+                required
+                error={errors.quantity?.message}
+                disabled={isSubmitting}
+                {...register("quantity")}
+              />
+
+              <FormDateInput
+                id="purchase_date"
+                label="Purchase Date"
+                error={errors.purchase_date?.message}
+                disabled={isSubmitting}
+                {...register("purchase_date")}
               />
             </div>
 
-            {/* Notes */}
-            <div className="grid gap-2">
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea
-                id="notes"
-                placeholder="Additional notes..."
-                rows={3}
-                value={formData.notes}
-                onChange={(e) =>
-                  setFormData({ ...formData, notes: e.target.value })
-                }
-              />
-            </div>
+            <FormDateInput
+              id="next_maintenance"
+              label="Next Maintenance"
+              error={errors.next_maintenance?.message}
+              disabled={isSubmitting}
+              {...register("next_maintenance")}
+            />
+
+            <FormTextarea
+              id="notes"
+              label="Notes"
+              placeholder="Additional notes..."
+              rows={3}
+              error={errors.notes?.message}
+              disabled={isSubmitting}
+              {...register("notes")}
+            />
           </div>
-
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isLoading}
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              {isLoading ? (
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Creating...
                 </>
               ) : (
-                "Add Equipment"
+                "Create Equipment"
               )}
             </Button>
           </DialogFooter>

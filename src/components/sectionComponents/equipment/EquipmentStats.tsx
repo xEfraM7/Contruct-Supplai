@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Package, CheckCircle, Truck, Wrench } from "lucide-react";
-import type { Equipment } from "@/lib/actions/equipment-actions";
+import type { Equipment } from "@/types/equipment";
 
 interface EquipmentStatsProps {
   equipment: Equipment[];
