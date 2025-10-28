@@ -28,12 +28,25 @@ export function useEquipment() {
   });
 }
 
+interface CreateEquipmentData {
+  name: string;
+  tag: string;
+  category: string;
+  status?: string;
+  location?: string;
+  value: number;
+  quantity: number;
+  purchase_date?: string;
+  next_maintenance?: string;
+  notes?: string;
+}
+
 // Create equipment
 export function useCreateEquipment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (equipmentData: Record<string, unknown>) => {
+    mutationFn: async (equipmentData: CreateEquipmentData) => {
       const response = await fetch("/api/equipment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

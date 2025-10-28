@@ -21,8 +21,7 @@ import {
   equipmentSchema,
   type EquipmentFormData,
 } from "@/lib/validations/equipment";
-import { createEquipment } from "@/lib/actions/equipment-actions";
-import { toast } from "sonner";
+import { useCreateEquipment } from "@/lib/hooks/use-equipment";
 
 interface AddEquipmentModalProps {
   open: boolean;
@@ -52,6 +51,8 @@ export function AddEquipmentModal({
   onOpenChange,
   onEquipmentCreated,
 }: AddEquipmentModalProps) {
+  const createEquipment = useCreateEquipment();
+
   const {
     register,
     handleSubmit,
@@ -70,7 +71,7 @@ export function AddEquipmentModal({
 
   const onSubmit = async (data: EquipmentFormData) => {
     try {
-      const result = await createEquipment({
+      await createEquipment.mutateAsync({
         name: data.name,
         tag: data.tag,
         category: data.category,
@@ -83,17 +84,12 @@ export function AddEquipmentModal({
         notes: data.notes || undefined,
       });
 
-      if (result.success) {
-        toast.success("Equipment created successfully");
-        onEquipmentCreated();
-        onOpenChange(false);
-        reset();
-      } else {
-        toast.error(result.error || "Failed to create equipment");
-      }
+      onEquipmentCreated();
+      onOpenChange(false);
+      reset();
     } catch (error) {
+      // Error is handled by the mutation hook
       console.error("Error creating equipment:", error);
-      toast.error("An error occurred");
     }
   };
 

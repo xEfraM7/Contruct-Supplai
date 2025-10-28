@@ -1,22 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import {
   FileText,
   DollarSign,
   Clock,
   Plus,
   Trash2,
-  AlertTriangle,
   User,
   Phone,
   Mail,
@@ -30,8 +21,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { CreateProjectModal } from "@/components/modals/CreateProjectModal";
-import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
+import { useDashboardMetrics } from "@/lib/hooks/use-dashboard-metrics";
+import { useProjects, useDeleteProject } from "@/lib/hooks/use-projects";
 import { formatDate, getDateStatus } from "@/lib/utils/dateUtils";
+import { useConfirm } from "@/hooks/use-confirm";
 
 interface Project {
   id: string;
@@ -53,23 +46,17 @@ interface Project {
 
 export function DashboardOverviewComponent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(
     new Set()
   );
+  const { confirm, ConfirmDialog } = useConfirm();
 
   // Get dashboard metrics
-  const { 
-    activeContracts, 
-    totalBudget, 
-    onTimeDelivery, 
-    isLoading: metricsLoading,
-    refetch: refetchMetrics 
-  } = useDashboardMetrics();
+  const { data: metrics, isLoading: metricsLoading } = useDashboardMetrics();
+  
+  // Get projects
+  const { data: projects = [], isLoading } = useProjects();
+  const deleteProject = useDeleteProject();
 
   // Calculate project progress based on dates
   const calculateProgress = (project: Project): number => {
@@ -117,58 +104,19 @@ export function DashboardOverviewComponent() {
     });
   };
 
-  const fetchProjects = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch("/api/projects");
-      if (response.ok) {
-        const data = await response.json();
-        setProjects(data.projects);
-      }
-    } catch (error) {
-      console.error("Error fetching projects:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchProjects();
-  }, []);
-
-  const handleProjectCreated = () => {
-    fetchProjects();
-    refetchMetrics(); // Refresh metrics when a new project is created
-  };
-
-  const handleDeleteClick = (project: Project, e: React.MouseEvent) => {
+  const handleDeleteClick = async (project: Project, e: React.MouseEvent) => {
     e.stopPropagation();
-    setProjectToDelete(project);
-    setIsDeleteModalOpen(true);
-  };
+    
+    const confirmed = await confirm({
+      title: "Delete Project",
+      description: "Are you sure you want to delete this project? All associated data will be permanently removed.",
+      confirmText: "Delete Project",
+      cancelText: "Cancel",
+      variant: "destructive",
+    });
 
-  const handleConfirmDelete = async () => {
-    if (!projectToDelete) return;
-
-    setIsDeleting(true);
-    try {
-      const response = await fetch(`/api/projects/${projectToDelete.id}`, {
-        method: "DELETE",
-      });
-
-      if (response.ok) {
-        setIsDeleteModalOpen(false);
-        setProjectToDelete(null);
-        fetchProjects();
-        refetchMetrics(); // Refresh metrics when a project is deleted
-      } else {
-        alert("Error deleting project");
-      }
-    } catch (error) {
-      console.error("Error deleting project:", error);
-      alert("Error deleting project");
-    } finally {
-      setIsDeleting(false);
+    if (confirmed) {
+      deleteProject.mutate(project.id);
     }
   };
 
@@ -190,62 +138,9 @@ export function DashboardOverviewComponent() {
       <CreateProjectModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
-        onProjectCreated={handleProjectCreated}
+        onProjectCreated={() => setIsModalOpen(false)}
       />
-
-      {/* Delete Confirmation Modal */}
-      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
-              </div>
-              <div>
-                <DialogTitle className="text-xl">Delete Project</DialogTitle>
-                <DialogDescription className="text-sm text-muted-foreground mt-1">
-                  This action cannot be undone
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="text-sm text-muted-foreground mb-4">
-              Are you sure you want to delete this project? All associated data
-              will be permanently removed.
-            </p>
-            {projectToDelete && (
-              <div className="p-3 rounded-lg bg-muted/50 border border-border">
-                <p className="font-semibold text-card-foreground">
-                  {projectToDelete.name}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {projectToDelete.address}
-                </p>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsDeleteModalOpen(false)}
-              disabled={isDeleting}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={handleConfirmDelete}
-              disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {isDeleting ? "Deleting..." : "Delete Project"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog />
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -258,7 +153,7 @@ export function DashboardOverviewComponent() {
                   Active Contracts
                 </p>
                 <p className="text-3xl font-bold text-card-foreground">
-                  {metricsLoading ? "..." : activeContracts}
+                  {metricsLoading ? "..." : metrics?.activeContracts ?? 0}
                 </p>
                 <p className="text-xs mt-2 text-muted-foreground">
                   Currently active projects
@@ -280,7 +175,7 @@ export function DashboardOverviewComponent() {
                   Total Budget
                 </p>
                 <p className="text-3xl font-bold text-card-foreground">
-                  {metricsLoading ? "..." : `$${totalBudget.toLocaleString()}`}
+                  {metricsLoading ? "..." : `$${(metrics?.totalBudget ?? 0).toLocaleString()}`}
                 </p>
                 <p className="text-xs mt-2 text-muted-foreground">
                   Combined active projects budget
@@ -302,7 +197,7 @@ export function DashboardOverviewComponent() {
                   On Time Delivery
                 </p>
                 <p className="text-3xl font-bold text-card-foreground">
-                  {metricsLoading ? "..." : `${onTimeDelivery}%`}
+                  {metricsLoading ? "..." : `${metrics?.onTimeDelivery ?? 0}%`}
                 </p>
                 <p className="text-xs mt-2 text-muted-foreground">
                   Completed projects delivered on time
