@@ -1,11 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useCreateAgentDialog } from '@/hooks/useCreateAgentDialog';
+import { useCreateAgent } from '@/lib/hooks/use-agents';
 
 interface CreateAgentDialogProps {
   open: boolean;
@@ -14,12 +15,44 @@ interface CreateAgentDialogProps {
 }
 
 export function CreateAgentDialog({ open, onOpenChange, onSuccess }: CreateAgentDialogProps) {
-  const handleSuccess = () => {
-    onSuccess();
-    onOpenChange(false);
+  const createAgent = useCreateAgent();
+  const [formData, setFormData] = useState({
+    agent_name: '',
+    voice_id: '11labs-Adrian',
+    language: 'es-ES',
+  });
+
+  const handleChange = (field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const { loading, formData, handleSubmit, handleChange } = useCreateAgentDialog(handleSuccess);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formData.agent_name) {
+      return;
+    }
+
+    try {
+      await createAgent.mutateAsync({
+        agent_name: formData.agent_name,
+        voice_id: formData.voice_id,
+        voice_model: 'eleven_multilingual_v2',
+        language: formData.language,
+        auto_create_llm: true,
+      });
+      
+      setFormData({
+        agent_name: '',
+        voice_id: '11labs-Adrian',
+        language: 'es-ES',
+      });
+      onOpenChange(false);
+      onSuccess();
+    } catch (error) {
+      console.error('Error creating agent:', error);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -83,12 +116,12 @@ export function CreateAgentDialog({ open, onOpenChange, onSuccess }: CreateAgent
               variant="outline"
               onClick={() => onOpenChange(false)}
               className="flex-1"
-              disabled={loading}
+              disabled={createAgent.isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" className="flex-1" disabled={loading}>
-              {loading ? 'Creating...' : 'Create Agent'}
+            <Button type="submit" className="flex-1" disabled={createAgent.isPending}>
+              {createAgent.isPending ? 'Creating...' : 'Create Agent'}
             </Button>
           </div>
         </form>

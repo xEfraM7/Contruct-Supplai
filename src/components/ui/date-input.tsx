@@ -8,8 +8,11 @@ export type DateInputProps = Omit<
 >;
 
 const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(
-  ({ className, value, onChange, ...props }) => {
+  ({ className, value, onChange, ...props }, ref) => {
     const dateInputRef = React.useRef<HTMLInputElement>(null);
+    
+    // Merge refs
+    React.useImperativeHandle(ref, () => dateInputRef.current as HTMLInputElement);
 
     // Convert YYYY-MM-DD to MM-DD-YYYY for display
     const formatDateForDisplay = (dateStr: string) => {
