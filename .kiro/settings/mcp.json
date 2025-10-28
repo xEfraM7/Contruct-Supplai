@@ -5,7 +5,7 @@
       "args": [
         "-y",
         "mcp-remote",
-        "https://mcp.supabase.com/mcp?project_ref=puhiqsugwfyfdvmjraeh"
+        "https://mcp.supabase.com/mcp?project_ref=nxvofxhljfgvonfcukzm&features=docs%2Caccount%2Cdatabase%2Cdevelopment%2Cfunctions%2Cdebugging%2Cbranching%2Cstorage"
       ]
     }
   }
