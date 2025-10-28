@@ -27,32 +27,33 @@ import {
 
 import { useScheduleLogic } from "@/hooks/useScheduleLogic";
 import { EventFormDialog } from "./EventFormDialog";
+import { themeColors } from "@/lib/theme";
 
 const eventTypeConfig = {
-  meeting: { icon: Users, color: "bg-blue-500", label: "Meeting" },
-  inspection: { icon: CheckCircle, color: "bg-green-500", label: "Inspection" },
-  delivery: { icon: Truck, color: "bg-orange-500", label: "Delivery" },
+  meeting: { icon: Users, color: themeColors.eventTypes.meeting.solid, label: themeColors.eventTypes.meeting.label },
+  inspection: { icon: CheckCircle, color: themeColors.eventTypes.inspection.solid, label: themeColors.eventTypes.inspection.label },
+  delivery: { icon: Truck, color: themeColors.eventTypes.delivery.solid, label: themeColors.eventTypes.delivery.label },
   milestone: {
     icon: AlertTriangle,
-    color: "bg-purple-500",
-    label: "Milestone",
+    color: themeColors.eventTypes.milestone.solid,
+    label: themeColors.eventTypes.milestone.label,
   },
-  maintenance: { icon: Wrench, color: "bg-yellow-500", label: "Maintenance" },
-  safety: { icon: AlertTriangle, color: "bg-red-500", label: "Safety" },
+  maintenance: { icon: Wrench, color: themeColors.eventTypes.maintenance.solid, label: themeColors.eventTypes.maintenance.label },
+  safety: { icon: AlertTriangle, color: themeColors.eventTypes.safety.solid, label: themeColors.eventTypes.safety.label },
 };
 
 const priorityConfig = {
-  low: { color: "bg-gray-500", label: "Low" },
-  medium: { color: "bg-blue-500", label: "Medium" },
-  high: { color: "bg-orange-500", label: "High" },
-  critical: { color: "bg-red-500", label: "Critical" },
+  low: { color: themeColors.priority.low.solid, label: themeColors.priority.low.label },
+  medium: { color: themeColors.priority.medium.solid, label: themeColors.priority.medium.label },
+  high: { color: themeColors.priority.high.solid, label: themeColors.priority.high.label },
+  critical: { color: themeColors.priority.critical.solid, label: themeColors.priority.critical.label },
 };
 
 const statusConfig = {
-  scheduled: { color: "bg-blue-500", label: "Scheduled" },
-  "in-progress": { color: "bg-yellow-500", label: "In Progress" },
-  completed: { color: "bg-green-500", label: "Completed" },
-  cancelled: { color: "bg-gray-500", label: "Cancelled" },
+  scheduled: { color: themeColors.scheduleStatus.scheduled.solid, label: themeColors.scheduleStatus.scheduled.label },
+  "in-progress": { color: themeColors.scheduleStatus["in-progress"].solid, label: themeColors.scheduleStatus["in-progress"].label },
+  completed: { color: themeColors.scheduleStatus.completed.solid, label: themeColors.scheduleStatus.completed.label },
+  cancelled: { color: themeColors.scheduleStatus.cancelled.solid, label: themeColors.scheduleStatus.cancelled.label },
 };
 
 const monthNames = [
@@ -369,7 +370,7 @@ export default function ScheduleMainComponent() {
                                 onClick={() =>
                                   logic.handleDeleteEvent(event.id!)
                                 }
-                                className="text-red-600"
+                                className={themeColors.interactive.delete.text}
                               >
                                 <Trash2 className="w-3 h-3 mr-2" />
                                 Delete
@@ -479,7 +480,7 @@ export default function ScheduleMainComponent() {
                 <p className="text-sm text-muted-foreground mb-1">
                   Overdue Tasks
                 </p>
-                <p className="text-3xl font-bold text-red-500">
+                <p className={`text-3xl font-bold ${themeColors.status.error.text}`}>
                   {logic.overdueTasks.length}
                 </p>
                 <p className="text-xs mt-2 text-muted-foreground">
@@ -488,8 +489,8 @@ export default function ScheduleMainComponent() {
                     : "Need attention"}
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-lg bg-red-500/10 flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-red-500" />
+              <div className={`w-12 h-12 rounded-lg ${themeColors.status.error.bg} flex items-center justify-center`}>
+                <AlertTriangle className={`w-6 h-6 ${themeColors.status.error.icon}`} />
               </div>
             </div>
           </CardContent>
@@ -502,15 +503,15 @@ export default function ScheduleMainComponent() {
                 <p className="text-sm text-muted-foreground mb-1">
                   Inspections
                 </p>
-                <p className="text-3xl font-bold text-green-500">
+                <p className={`text-3xl font-bold ${themeColors.status.success.text}`}>
                   {logic.events.filter((e) => e.type === "inspection").length}
                 </p>
                 <p className="text-xs mt-2 text-muted-foreground">
                   Scheduled this month
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-lg bg-green-500/10 flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-green-500" />
+              <div className={`w-12 h-12 rounded-lg ${themeColors.status.success.bg} flex items-center justify-center`}>
+                <CheckCircle className={`w-6 h-6 ${themeColors.status.success.icon}`} />
               </div>
             </div>
           </CardContent>
@@ -630,7 +631,7 @@ export default function ScheduleMainComponent() {
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => logic.handleDeleteEvent(event.id!)}
-                              className="text-red-600"
+                              className={themeColors.interactive.delete.text}
                             >
                               <Trash2 className="w-4 h-4 mr-2" />
                               Delete Event

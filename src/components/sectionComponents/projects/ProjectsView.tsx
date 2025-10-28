@@ -18,6 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { CreateProjectModal } from "@/components/modals/CreateProjectModal";
+import { themeColors } from "@/lib/theme";
 import { formatDate, getDateStatus } from "@/lib/utils/dateUtils";
 import type { Project } from "@/types/project";
 
@@ -217,7 +218,7 @@ export function ProjectsView({
                             variant="ghost"
                             size="icon"
                             onClick={(e) => onDeleteClick(project, e)}
-                            className="text-muted-foreground hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className={`text-muted-foreground ${themeColors.interactive.delete.hover} opacity-0 group-hover:opacity-100 transition-opacity`}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
