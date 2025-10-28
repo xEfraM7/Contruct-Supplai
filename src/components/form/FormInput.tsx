@@ -2,6 +2,7 @@ import { forwardRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { themeColors } from "@/lib/theme";
 
 interface FormInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -17,7 +18,7 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
         {label && (
           <Label htmlFor={props.id}>
             {label}
-            {required && <span className="text-red-500 ml-1">*</span>}
+            {required && <span className={`${themeColors.status.error.text} ml-1`}>*</span>}
           </Label>
         )}
         <Input
@@ -25,7 +26,7 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
           className={cn(error && "border-red-500", className)}
           {...props}
         />
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className={`text-sm ${themeColors.status.error.text}`}>{error}</p>}
         {helperText && !error && (
           <p className="text-sm text-muted-foreground">{helperText}</p>
         )}

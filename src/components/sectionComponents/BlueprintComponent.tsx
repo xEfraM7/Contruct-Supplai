@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "../ui/badge";
 import { cn } from "@/lib/utils";
+import { themeColors } from "@/lib/theme";
 
 const menuItems = ["Jobs", "Discrepancies", "RFIs", "Blueprints"];
 
@@ -659,7 +660,7 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
 
               {/* Error */}
               {error && (
-                <div className="mt-6 p-4 border border-red-200 rounded bg-red-50 text-sm text-red-600">
+                <div className={`mt-6 p-4 rounded text-sm border ${themeColors.status.error.bg} ${themeColors.status.error.text} ${themeColors.status.error.border}`}>
                   <h4 className="text-md font-semibold mb-2">Error:</h4>
                   {error}
                 </div>
@@ -864,8 +865,8 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                                               className={cn(
                                                 "h-full",
                                                 item.confidence >= 90
-                                                  ? "bg-green-500"
-                                                  : "bg-orange-500"
+                                                  ? themeColors.confidence.high
+                                                  : themeColors.confidence.medium
                                               )}
                                               style={{
                                                 width: `${item.confidence}%`,
@@ -889,19 +890,19 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                             </div>
 
                             {/* Budget Summary */}
-                            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <div className={`mt-6 p-4 rounded-lg border ${themeColors.cards.budget.bg} ${themeColors.cards.budget.border}`}>
                               <div className="flex flex-col gap-4">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                   <div>
-                                    <h4 className="text-lg font-semibold text-blue-900 mb-1">
+                                    <h4 className={`text-lg font-semibold mb-1 ${themeColors.cards.budget.title}`}>
                                       Project Budget Summary
                                     </h4>
-                                    <p className="text-sm text-blue-700">
+                                    <p className={`text-sm ${themeColors.cards.budget.text}`}>
                                       Cost breakdown for extracted items
                                     </p>
                                   </div>
                                   <div className="text-right">
-                                    <div className="text-2xl font-bold text-blue-900">
+                                    <div className={`text-2xl font-bold ${themeColors.cards.budget.title}`}>
                                       $
                                       {(
                                         (analysisResult.totalCostAvailable ||
@@ -909,30 +910,30 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                                         (analysisResult.totalCostNeeded || 0)
                                       ).toFixed(2)}
                                     </div>
-                                    <div className="text-xs text-blue-600">
+                                    <div className={`text-xs ${themeColors.cards.budget.text}`}>
                                       Total Project Cost
                                     </div>
                                   </div>
                                 </div>
 
                                 {/* Detailed Breakdown */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-blue-200">
+                                <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t ${themeColors.cards.budget.border}`}>
                                   {/* Available Items */}
                                   {analysisResult.totalCostAvailable &&
                                     analysisResult.totalCostAvailable > 0 && (
-                                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                                      <div className={`rounded-lg p-3 border ${themeColors.cards.inventory.bg} ${themeColors.cards.inventory.border}`}>
                                         <div className="flex items-center justify-between mb-2">
-                                          <h5 className="font-semibold text-green-900">
+                                          <h5 className={`font-semibold ${themeColors.cards.inventory.title}`}>
                                             From Inventory
                                           </h5>
-                                          <span className="text-lg font-bold text-green-900">
+                                          <span className={`text-lg font-bold ${themeColors.cards.inventory.title}`}>
                                             $
                                             {analysisResult.totalCostAvailable.toFixed(
                                               2
                                             )}
                                           </span>
                                         </div>
-                                        <p className="text-sm text-green-700">
+                                        <p className={`text-sm ${themeColors.cards.inventory.text}`}>
                                           {analysisResult.availableItemsCount ||
                                             0}{" "}
                                           items available in inventory
@@ -943,19 +944,19 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                                   {/* Needed Items */}
                                   {analysisResult.totalCostNeeded &&
                                     analysisResult.totalCostNeeded > 0 && (
-                                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                                      <div className={`rounded-lg p-3 border ${themeColors.cards.needed.bg} ${themeColors.cards.needed.border}`}>
                                         <div className="flex items-center justify-between mb-2">
-                                          <h5 className="font-semibold text-orange-900">
+                                          <h5 className={`font-semibold ${themeColors.cards.needed.title}`}>
                                             Need to Acquire
                                           </h5>
-                                          <span className="text-lg font-bold text-orange-900">
+                                          <span className={`text-lg font-bold ${themeColors.cards.needed.title}`}>
                                             $
                                             {analysisResult.totalCostNeeded.toFixed(
                                               2
                                             )}
                                           </span>
                                         </div>
-                                        <p className="text-sm text-orange-700">
+                                        <p className={`text-sm ${themeColors.cards.needed.text}`}>
                                           {analysisResult.neededItemsCount || 0}{" "}
                                           items to purchase/rent
                                         </p>
@@ -968,22 +969,22 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                             {/* Discrepancies Alert */}
                             {analysisResult.discrepancyCount &&
                               analysisResult.discrepancyCount > 0 && (
-                                <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                                <div className={`mt-6 p-4 rounded-lg border ${themeColors.cards.alert.bg} ${themeColors.cards.alert.border}`}>
                                   <div className="flex items-start gap-3">
-                                    <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                                    <AlertTriangle className={`w-5 h-5 mt-0.5 shrink-0 ${themeColors.cards.alert.icon}`} />
                                     <div className="flex-1">
-                                      <h4 className="text-sm font-semibold text-red-900 mb-1">
+                                      <h4 className={`text-sm font-semibold mb-1 ${themeColors.cards.alert.title}`}>
                                         {analysisResult.discrepancyCount}{" "}
                                         Discrepancies Detected
                                       </h4>
-                                      <p className="text-sm text-red-700 mb-3">
+                                      <p className={`text-sm mb-3 ${themeColors.cards.alert.text}`}>
                                         Our AI has identified conflicts between
                                         blueprints and schedules
                                       </p>
                                       <Button
                                         size="sm"
                                         variant="destructive"
-                                        className="bg-red-600 hover:bg-red-700"
+                                        className={themeColors.interactive.delete.button}
                                         onClick={() =>
                                           setActiveMenu("Discrepancies")
                                         }
@@ -1030,7 +1031,7 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
               {analysisResult ? (
                 <div className="p-4 border rounded bg-muted/30 whitespace-pre-wrap text-sm">
                   <h4 className="text-md font-semibold mb-4 flex items-center gap-2">
-                    <FileQuestion className="w-5 h-5 text-blue-600" />
+                    <FileQuestion className={`w-5 h-5 ${themeColors.status.info.icon}`} />
                     RFIs (Requests for Information):
                   </h4>
                   {analysisResult.rfis}
@@ -1221,7 +1222,7 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                     }`}
                   >
                     {index < progressStep ? (
-                      <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+                      <CheckCircle2 className={`w-5 h-5 flex-shrink-0 ${themeColors.status.success.icon}`} />
                     ) : index === progressStep ? (
                       <Loader2 className="w-5 h-5 text-primary animate-spin flex-shrink-0" />
                     ) : (

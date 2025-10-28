@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Building2, Save, Loader2 } from "lucide-react";
+import { themeColors } from "@/lib/theme";
 
 interface UserSettings {
   companyName: string;
@@ -187,10 +188,10 @@ export default function SettingsMainComponent() {
             {/* Message */}
             {message && (
               <div
-                className={`p-3 rounded-lg text-sm ${
+                className={`p-3 rounded-lg text-sm border ${
                   message.type === "success"
-                    ? "bg-green-50 text-green-600 border border-green-200"
-                    : "bg-red-50 text-red-600 border border-red-200"
+                    ? `${themeColors.status.success.bg} ${themeColors.status.success.text} ${themeColors.status.success.border}`
+                    : `${themeColors.status.error.bg} ${themeColors.status.error.text} ${themeColors.status.error.border}`
                 }`}
               >
                 {message.text}

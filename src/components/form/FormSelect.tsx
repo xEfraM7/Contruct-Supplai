@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { themeColors } from "@/lib/theme";
 
 interface FormSelectProps {
   label?: string;
@@ -43,7 +44,7 @@ export const FormSelect = forwardRef<HTMLButtonElement, FormSelectProps>(
         {label && (
           <Label htmlFor={id}>
             {label}
-            {required && <span className="text-red-500 ml-1">*</span>}
+            {required && <span className={`${themeColors.status.error.text} ml-1`}>*</span>}
           </Label>
         )}
         <Select value={value} onValueChange={onValueChange} disabled={disabled}>
@@ -62,7 +63,7 @@ export const FormSelect = forwardRef<HTMLButtonElement, FormSelectProps>(
             ))}
           </SelectContent>
         </Select>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className={`text-sm ${themeColors.status.error.text}`}>{error}</p>}
         {helperText && !error && (
           <p className="text-sm text-muted-foreground">{helperText}</p>
         )}

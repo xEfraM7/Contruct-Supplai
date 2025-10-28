@@ -38,6 +38,7 @@ import {
 import { CreateCallDialog } from "@/components/calls/CreateCallDialog";
 import { CallHistoryDialog } from "@/components/calls/CallHistoryDialog";
 import { useClient, useDeleteClient } from "@/lib/hooks/use-clients";
+import { themeColors } from "@/lib/theme";
 
 interface Client {
   id: string;
@@ -188,7 +189,7 @@ export function ClientDetailComponent() {
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={handleDeleteClient}
-                  className="text-red-600"
+                  className={themeColors.interactive.delete.text}
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
                   Delete Client
@@ -334,7 +335,7 @@ export function ClientDetailComponent() {
           <form onSubmit={handleAddContact} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">
-                Name <span className="text-red-500">*</span>
+                Name <span className={themeColors.status.error.text}>*</span>
               </Label>
               <Input
                 id="name"
@@ -349,7 +350,7 @@ export function ClientDetailComponent() {
 
             <div className="space-y-2">
               <Label htmlFor="phone">
-                Phone <span className="text-red-500">*</span>
+                Phone <span className={themeColors.status.error.text}>*</span>
               </Label>
               <Input
                 id="phone"
@@ -365,7 +366,7 @@ export function ClientDetailComponent() {
 
             <div className="space-y-2">
               <Label htmlFor="email">
-                Email <span className="text-red-500">*</span>
+                Email <span className={themeColors.status.error.text}>*</span>
               </Label>
               <Input
                 id="email"
@@ -381,7 +382,7 @@ export function ClientDetailComponent() {
 
             <div className="space-y-2">
               <Label htmlFor="company">
-                Position/Role <span className="text-red-500">*</span>
+                Position/Role <span className={themeColors.status.error.text}>*</span>
               </Label>
               <Input
                 id="company"

@@ -2,6 +2,7 @@ import { forwardRef } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { themeColors } from "@/lib/theme";
 
 interface FormTextareaProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -18,7 +19,7 @@ export const FormTextarea = forwardRef<HTMLTextAreaElement, FormTextareaProps>(
         {label && (
           <Label htmlFor={props.id}>
             {label}
-            {required && <span className="text-red-500 ml-1">*</span>}
+            {required && <span className={`${themeColors.status.error.text} ml-1`}>*</span>}
           </Label>
         )}
         <Textarea
@@ -26,7 +27,7 @@ export const FormTextarea = forwardRef<HTMLTextAreaElement, FormTextareaProps>(
           className={cn(error && "border-red-500", className)}
           {...props}
         />
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className={`text-sm ${themeColors.status.error.text}`}>{error}</p>}
         {helperText && !error && (
           <p className="text-sm text-muted-foreground">{helperText}</p>
         )}
