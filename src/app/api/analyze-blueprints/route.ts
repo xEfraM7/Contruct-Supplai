@@ -72,13 +72,6 @@ export async function POST(req: NextRequest) {
         for (const [cat, items] of Object.entries(groupedEquipment)) {
           equipmentContext += `### ${cat}\n`;
           items.forEach((item) => {
-            const statusEmoji =
-              item.status === "available"
-                ? "✅"
-                : item.status === "checked_out"
-                ? "🔄"
-                : "🔧";
-
             const formattedValue = new Intl.NumberFormat("en-US", {
               style: "currency",
               currency: "USD",
@@ -86,11 +79,13 @@ export async function POST(req: NextRequest) {
               maximumFractionDigits: 0,
             }).format(item.value);
 
-            equipmentContext += `- ${statusEmoji} ${item.name} (${item.tag}) - ${item.status}`;
+            equipmentContext += `- ${item.name} (${item.tag}) - Status: ${item.status}`;
             if (item.location) {
               equipmentContext += ` - Location: ${item.location}`;
             }
-            equipmentContext += ` - Quantity: ${item.quantity ?? "N/A"} - Value: ${formattedValue}\n`;
+            equipmentContext += ` - Quantity: ${
+              item.quantity ?? "N/A"
+            } - Value: ${formattedValue}\n`;
           });
           equipmentContext += `\n`;
         }
@@ -120,9 +115,9 @@ export async function POST(req: NextRequest) {
 
     // Crear Assistant
     console.log("[ANALYZE_BLUEPRINT] Creando assistant...");
-const assistant = await openai.beta.assistants.create({
-  name: "Construction Plan Review & Estimation Assistant",
-  instructions: `
+    const assistant = await openai.beta.assistants.create({
+      name: "Construction Plan Review & Estimation Assistant",
+      instructions: `
 You are a senior construction plan review expert with experience in analyzing architectural, structural, and MEP drawings. You will receive:
 
 1. A construction plan in PDF format  
@@ -205,10 +200,9 @@ Number each RFI clearly (RFI-01, RFI-02, etc.).
 - Keep language concise and technical for construction field teams.
 - Always use the exact section headers shown above.
   `,
-  model: "gpt-4o",
-  tools: [{ type: "file_search" }],
-});
-
+      model: "gpt-4o",
+      tools: [{ type: "file_search" }],
+    });
 
     // Crear Thread y mensaje
     console.log("[ANALYZE_BLUEPRINT] Creando thread...");
@@ -262,24 +256,23 @@ Use engineering judgment but do not guess or assume anything not visible in the 
       (msg) => msg.role === "assistant"
     );
 
-let result = "Sin respuesta generada.";
+    let result = "Sin respuesta generada.";
 
-if (assistantMessage?.content[0]?.type === "text") {
-  result = assistantMessage.content[0].text.value;
-} else {
-  console.warn("[ANALYZE_BLUEPRINT] Respuesta sin contenido de texto.");
-}
+    if (assistantMessage?.content[0]?.type === "text") {
+      result = assistantMessage.content[0].text.value;
+    } else {
+      console.warn("[ANALYZE_BLUEPRINT] Respuesta sin contenido de texto.");
+    }
 
-// Paso 1: Ver respuesta cruda
-console.log("[OPENAI RAW RESPONSE]");
-console.log(JSON.stringify(messages.data, null, 2));
+    // Paso 1: Ver respuesta cruda
+    console.log("[OPENAI RAW RESPONSE]");
+    console.log(JSON.stringify(messages.data, null, 2));
 
-// Paso 2: Ver resultado final que irá al frontend
-console.log("[AI FINAL RESULT]");
-console.log(result);
+    // Paso 2: Ver resultado final que irá al frontend
+    console.log("[AI FINAL RESULT]");
+    console.log(result);
 
-console.log("[ANALYZE_BLUEPRINT] Análisis completado.");
-
+    console.log("[ANALYZE_BLUEPRINT] Análisis completado.");
 
     // Limpieza
     try {
@@ -287,7 +280,10 @@ console.log("[ANALYZE_BLUEPRINT] Análisis completado.");
       await openai.files.delete(uploadedFile.id);
       console.log("[ANALYZE_BLUEPRINT] Recursos eliminados.");
     } catch (cleanupError) {
-      console.warn("[ANALYZE_BLUEPRINT] Error al limpiar recursos:", cleanupError);
+      console.warn(
+        "[ANALYZE_BLUEPRINT] Error al limpiar recursos:",
+        cleanupError
+      );
     }
 
     return NextResponse.json({ result });
@@ -300,7 +296,8 @@ console.log("[ANALYZE_BLUEPRINT] Análisis completado.");
     return NextResponse.json(
       {
         error: errorMessage,
-        details: process.env.NODE_ENV === "development" ? errorStack : undefined,
+        details:
+          process.env.NODE_ENV === "development" ? errorStack : undefined,
       },
       { status: 500 }
     );

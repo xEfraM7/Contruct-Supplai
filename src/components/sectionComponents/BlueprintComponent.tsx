@@ -150,15 +150,15 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
   const parseAnalysisResult = (text: string): AnalysisResult => {
     console.log("[PARSE] Texto recibido:", text.substring(0, 500));
     
-    // Buscar secciones (con o sin números y emojis)
+    // Buscar secciones (con o sin números)
     const requestedMatch = text.match(
-      /#+\s*(?:\d+\.\s*)?(?:🧱\s*)?(?:TAKEOFF|LO SOLICITADO)\s*([\s\S]*?)(?=#+\s*(?:\d+\.\s*)?(?:⚠️\s*)?(?:DISCREPANCIES|DISCREPANCIAS|🧠\s*TECHNICAL|💲\s*MATERIAL)|$)/i
+      /#+\s*(?:\d+\.\s*)?(?:TAKEOFF|LO SOLICITADO)\s*([\s\S]*?)(?=#+\s*(?:\d+\.\s*)?(?:DISCREPANCIES|DISCREPANCIAS|TECHNICAL|MATERIAL)|$)/i
     );
 
     const discrepanciesMatch = text.match(
-      /#+\s*(?:\d+\.\s*)?(?:⚠️\s*)?(?:DISCREPANCIES|DISCREPANCIAS)\s*([\s\S]*?)(?=#+\s*(?:\d+\.\s*)?(?:📄\s*)?RFIs|$)/i
+      /#+\s*(?:\d+\.\s*)?(?:DISCREPANCIES|DISCREPANCIAS)\s*([\s\S]*?)(?=#+\s*(?:\d+\.\s*)?RFIs|$)/i
     );
-    const rfisMatch = text.match(/#+\s*(?:\d+\.\s*)?(?:📄\s*)?RFIs\s*([\s\S]*?)(?=#+\s*(?:\d+\.\s*)?(?:📊\s*)?(?:BUDGET|$))/i);
+    const rfisMatch = text.match(/#+\s*(?:\d+\.\s*)?RFIs\s*([\s\S]*?)(?=#+\s*(?:\d+\.\s*)?(?:BUDGET|$))/i);
 
     // Extract items from summary table if exists
     const extractedItems: ExtractedItem[] = [];
@@ -361,8 +361,8 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
     }
     
     // Agregar también las secciones de Technical Response y Material Cost si existen
-    const technicalMatch = text.match(/#+\s*(?:\d+\.\s*)?(?:🧠\s*)?TECHNICAL RESPONSE\s*([\s\S]*?)(?=#+\s*(?:\d+\.\s*)?(?:💲\s*)?(?:MATERIAL|DISCREPANCIES)|$)/i);
-    const costMatch = text.match(/#+\s*(?:\d+\.\s*)?(?:💲\s*)?MATERIAL COST ESTIMATION\s*([\s\S]*?)(?=#+\s*(?:\d+\.\s*)?(?:⚠️\s*)?(?:DISCREPANCIES|BUDGET)|$)/i);
+    const technicalMatch = text.match(/#+\s*(?:\d+\.\s*)?TECHNICAL RESPONSE\s*([\s\S]*?)(?=#+\s*(?:\d+\.\s*)?(?:MATERIAL|DISCREPANCIES)|$)/i);
+    const costMatch = text.match(/#+\s*(?:\d+\.\s*)?MATERIAL COST ESTIMATION\s*([\s\S]*?)(?=#+\s*(?:\d+\.\s*)?(?:DISCREPANCIES|BUDGET)|$)/i);
     
     if (technicalMatch?.[1]) {
       requestedContent += "\n\n" + technicalMatch[1].trim();
