@@ -1,116 +1,135 @@
 "use client";
 
 import { useState } from "react";
-import { HardHat } from "lucide-react";
+import { HardHat, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { signInWithGoogle } from "@/lib/actions/auth-actions";
 import { loginSchema, registerSchema } from "@/lib/validations/auth";
-import { ZodError } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
+import { z } from "zod";
+
+type LoginFormData = z.infer<typeof loginSchema>;
+type RegisterFormData = z.infer<typeof registerSchema>;
 
 export function LoginFormComponent() {
   const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [name, setName] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [generalError, setGeneralError] = useState<string>("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleGoogleSignIn = async () => {
-    setIsLoading(true);
-    setErrors({});
+  const loginForm = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
 
-    try {
+  const registerForm = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+    },
+  });
+
+  const loginMutation = useMutation({
+    mutationFn: async (data: LoginFormData) => {
+      const response = await fetch("/api/auth/signin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || "Credenciales incorrectas");
+      }
+
+      return result;
+    },
+    onSuccess: () => {
+      window.location.href = "/overview";
+    },
+    onError: (error: Error) => {
+      setGeneralError(error.message);
+    },
+  });
+
+  const registerMutation = useMutation({
+    mutationFn: async (data: RegisterFormData) => {
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+          name: data.name,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || "Error al registrarse");
+      }
+
+      return result;
+    },
+    onSuccess: () => {
+      window.location.href = "/overview";
+    },
+    onError: (error: Error) => {
+      setGeneralError(error.message);
+    },
+  });
+
+  const googleSignInMutation = useMutation({
+    mutationFn: async () => {
       const result = await signInWithGoogle();
 
-      if (result.success && result.data?.url) {
-        window.location.href = result.data.url;
-      } else {
-        setErrors({
-          general: result.error || "Error al iniciar sesión con Google",
-        });
+      if (!result.success || !result.data?.url) {
+        throw new Error(result.error || "Error al iniciar sesión con Google");
       }
-    } catch (err) {
-      setErrors({ general: "Error al iniciar sesión con Google" });
-      console.error("Google sign in error:", err);
-    } finally {
-      setIsLoading(false);
-    }
+
+      return result.data.url;
+    },
+    onSuccess: (url) => {
+      window.location.href = url;
+    },
+    onError: (error: Error) => {
+      setGeneralError(error.message);
+    },
+  });
+
+  const onLoginSubmit = (data: LoginFormData) => {
+    setGeneralError("");
+    loginMutation.mutate(data);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setErrors({});
-
-    try {
-      if (isLogin) {
-        const validatedData = loginSchema.parse({ email, password });
-
-        const response = await fetch('/api/auth/signin', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: validatedData.email,
-            password: validatedData.password,
-          }),
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-          window.location.href = "/overview";
-        } else {
-          setErrors({ general: result.error || "Credenciales incorrectas" });
-        }
-      } else {
-        const validatedData = registerSchema.parse({
-          name,
-          email,
-          password,
-          confirmPassword,
-        });
-
-        const response = await fetch('/api/auth/signup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: validatedData.email,
-            password: validatedData.password,
-            name: validatedData.name,
-          }),
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-          window.location.href = "/overview";
-        } else {
-          setErrors({ general: result.error || "Error al registrarse" });
-        }
-      }
-    } catch (err) {
-      if (err instanceof ZodError) {
-        const fieldErrors: Record<string, string> = {};
-        if (err.issues && Array.isArray(err.issues)) {
-          err.issues.forEach((issue) => {
-            const path = issue.path[0] as string;
-            fieldErrors[path] = issue.message;
-          });
-        }
-        setErrors(fieldErrors);
-      } else {
-        setErrors({ general: "Ocurrió un error inesperado" });
-        console.error("Auth error:", err);
-      }
-    } finally {
-      setIsLoading(false);
-    }
+  const onRegisterSubmit = (data: RegisterFormData) => {
+    setGeneralError("");
+    registerMutation.mutate(data);
   };
+
+  const handleGoogleSignIn = () => {
+    setGeneralError("");
+    googleSignInMutation.mutate();
+  };
+
+  const isLoading =
+    loginMutation.isPending ||
+    registerMutation.isPending ||
+    googleSignInMutation.isPending;
 
   return (
     <div className="space-y-8">
@@ -120,7 +139,9 @@ export function LoginFormComponent() {
           <HardHat className="w-7 h-7 text-primary-foreground" />
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-foreground">Construct Supplia</h2>
+          <h2 className="text-xl font-semibold text-foreground">
+            Construct Supplia
+          </h2>
           <p className="text-sm text-muted-foreground">Construction CRM</p>
         </div>
       </div>
@@ -138,7 +159,14 @@ export function LoginFormComponent() {
       </div>
 
       {/* Login / Register Form */}
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form
+        onSubmit={
+          isLogin
+            ? loginForm.handleSubmit(onLoginSubmit)
+            : registerForm.handleSubmit(onRegisterSubmit)
+        }
+        className="space-y-6"
+      >
         <div className="space-y-4">
           {!isLogin && (
             <div className="space-y-2">
@@ -147,12 +175,15 @@ export function LoginFormComponent() {
                 id="name"
                 type="text"
                 placeholder="Graphical solutions inc."
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className={`h-11 ${errors.name ? "border-red-500" : ""}`}
+                {...registerForm.register("name")}
+                className={`h-11 ${
+                  registerForm.formState.errors.name ? "border-red-500" : ""
+                }`}
               />
-              {errors.name && (
-                <p className="text-sm text-red-600">{errors.name}</p>
+              {registerForm.formState.errors.name && (
+                <p className="text-sm text-red-600">
+                  {registerForm.formState.errors.name.message}
+                </p>
               )}
             </div>
           )}
@@ -163,45 +194,108 @@ export function LoginFormComponent() {
               id="email"
               type="email"
               placeholder="you@company.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={`h-11 ${errors.email ? "border-red-500" : ""}`}
+              {...(isLogin
+                ? loginForm.register("email")
+                : registerForm.register("email"))}
+              className={`h-11 ${
+                (
+                  isLogin
+                    ? loginForm.formState.errors.email
+                    : registerForm.formState.errors.email
+                )
+                  ? "border-red-500"
+                  : ""
+              }`}
             />
-            {errors.email && (
-              <p className="text-sm text-red-600">{errors.email}</p>
-            )}
+            {isLogin
+              ? loginForm.formState.errors.email && (
+                  <p className="text-sm text-red-600">
+                    {loginForm.formState.errors.email.message}
+                  </p>
+                )
+              : registerForm.formState.errors.email && (
+                  <p className="text-sm text-red-600">
+                    {registerForm.formState.errors.email.message}
+                  </p>
+                )}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={`h-11 ${errors.password ? "border-red-500" : ""}`}
-            />
-            {errors.password && (
-              <p className="text-sm text-red-600">{errors.password}</p>
-            )}
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter your password"
+                {...(isLogin
+                  ? loginForm.register("password")
+                  : registerForm.register("password"))}
+                className={`h-11 pr-10 ${
+                  (
+                    isLogin
+                      ? loginForm.formState.errors.password
+                      : registerForm.formState.errors.password
+                  )
+                    ? "border-red-500"
+                    : ""
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showPassword ? (
+                  <EyeOff className="w-5 h-5" />
+                ) : (
+                  <Eye className="w-5 h-5" />
+                )}
+              </button>
+            </div>
+            {isLogin
+              ? loginForm.formState.errors.password && (
+                  <p className="text-sm text-red-600">
+                    {loginForm.formState.errors.password.message}
+                  </p>
+                )
+              : registerForm.formState.errors.password && (
+                  <p className="text-sm text-red-600">
+                    {registerForm.formState.errors.password.message}
+                  </p>
+                )}
           </div>
 
           {!isLogin && (
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="Repeat your password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className={`h-11 ${
-                  errors.confirmPassword ? "border-red-500" : ""
-                }`}
-              />
-              {errors.confirmPassword && (
-                <p className="text-sm text-red-600">{errors.confirmPassword}</p>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Repeat your password"
+                  {...registerForm.register("confirmPassword")}
+                  className={`h-11 pr-10 ${
+                    registerForm.formState.errors.confirmPassword
+                      ? "border-red-500"
+                      : ""
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+              {registerForm.formState.errors.confirmPassword && (
+                <p className="text-sm text-red-600">
+                  {registerForm.formState.errors.confirmPassword.message}
+                </p>
               )}
             </div>
           )}
@@ -225,9 +319,9 @@ export function LoginFormComponent() {
           </div>
         )}
 
-        {errors.general && (
+        {generalError && (
           <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg">
-            {errors.general}
+            {generalError}
           </div>
         )}
 
