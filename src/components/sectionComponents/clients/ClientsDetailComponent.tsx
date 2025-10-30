@@ -12,12 +12,12 @@ import {
   Phone,
   MapPin,
   Globe,
-  Plus,
   Loader2,
-  User,
   MoreVertical,
   Edit,
   Trash2,
+  Plus,
+  User,
   PhoneCall,
   History,
 } from "lucide-react";
@@ -35,20 +35,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useClient, useDeleteClient } from "@/lib/hooks/use-clients";
+import { useContacts, useCreateContact, useDeleteContact } from "@/lib/hooks/use-contacts";
 import { CreateCallDialog } from "@/components/calls/CreateCallDialog";
 import { CallHistoryDialog } from "@/components/calls/CallHistoryDialog";
-import { useClient, useDeleteClient } from "@/lib/hooks/use-clients";
 import { themeColors } from "@/lib/theme";
-
-interface Subcontractor {
-  id: string;
-  name: string;
-  phone: string;
-  email: string;
-  company: string;
-  status: string;
-  created_at: string;
-}
+import type { Contact } from "@/types/contact";
 
 export function ClientDetailComponent() {
   const router = useRouter();
@@ -56,47 +48,43 @@ export function ClientDetailComponent() {
   const clientId = params.clientId as string;
 
   const { data: client, isLoading } = useClient(clientId);
+  const { data: contacts = [], isLoading: contactsLoading } = useContacts(clientId);
   const deleteClient = useDeleteClient();
+  const createContact = useCreateContact(clientId);
+  const deleteContact = useDeleteContact(clientId);
 
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedContactForCall, setSelectedContactForCall] =
-    useState<Subcontractor | null>(null);
-  const [selectedContactForHistory, setSelectedContactForHistory] =
-    useState<Subcontractor | null>(null);
-
   const [contactForm, setContactForm] = useState({
     name: "",
     phone: "",
     email: "",
-    company: "",
+    position: "",
   });
+  const [selectedContactForCall, setSelectedContactForCall] = useState<Contact | null>(null);
+  const [selectedContactForHistory, setSelectedContactForHistory] = useState<Contact | null>(null);
 
-  const handleAddContact = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  const handleAddContact = async () => {
+    if (!contactForm.name || !contactForm.phone) {
+      alert("Name and phone are required");
+      return;
+    }
 
     try {
-      const response = await fetch(`/api/clients/${clientId}/subcontractors`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(contactForm),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        setIsAddContactOpen(false);
-        setContactForm({ name: "", phone: "", email: "", company: "" });
-        // Client data will be refetched automatically by React Query
-      } else {
-        alert(result.error || "Failed to add contact");
-      }
+      await createContact.mutateAsync(contactForm);
+      setIsAddContactOpen(false);
+      setContactForm({ name: "", phone: "", email: "", position: "" });
     } catch (error) {
-      console.error("Error adding contact:", error);
-      alert("An error occurred");
-    } finally {
-      setIsSubmitting(false);
+      console.error("Error creating contact:", error);
+    }
+  };
+
+  const handleDeleteContact = async (contactId: string) => {
+    if (!confirm("Are you sure you want to delete this contact?")) return;
+
+    try {
+      await deleteContact.mutateAsync(contactId);
+    } catch (error) {
+      console.error("Error deleting contact:", error);
     }
   };
 
@@ -238,7 +226,11 @@ export function ClientDetailComponent() {
           </div>
         </CardHeader>
         <CardContent>
-          {(client?.subcontractors?.length || 0) === 0 ? (
+          {contactsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            </div>
+          ) : contacts.length === 0 ? (
             <div className="text-center py-8">
               <User className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground mb-4">No contacts yet</p>
@@ -249,7 +241,7 @@ export function ClientDetailComponent() {
             </div>
           ) : (
             <div className="space-y-3">
-              {client?.subcontractors?.map((contact: Subcontractor) => (
+              {contacts.map((contact) => (
                 <div
                   key={contact.id}
                   className="flex items-center justify-between p-4 rounded-lg border border-border hover:border-primary/50 transition-colors"
@@ -276,36 +268,46 @@ export function ClientDetailComponent() {
                           </span>
                         )}
                       </div>
-                      {contact.company && (
+                      {contact.position && (
                         <p className="text-xs text-muted-foreground mt-1">
-                          {contact.company}
+                          {contact.position}
                         </p>
                       )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
-                      size="sm"
                       variant="outline"
-                      onClick={() => setSelectedContactForHistory(contact)}
-                    >
-                      <History className="w-4 h-4 mr-1" />
-                      History
-                    </Button>
-                    <Button
                       size="sm"
                       onClick={() => setSelectedContactForCall(contact)}
                     >
-                      <PhoneCall className="w-4 h-4 mr-1" />
+                      <PhoneCall className="w-4 h-4 mr-2" />
                       Call
                     </Button>
-                    <Badge
-                      variant={
-                        contact.status === "active" ? "default" : "secondary"
-                      }
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedContactForHistory(contact)}
                     >
-                      {contact.status}
-                    </Badge>
+                      <History className="w-4 h-4 mr-2" />
+                      History
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreVertical className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteContact(contact.id)}
+                          className={themeColors.interactive.delete.text}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               ))}
@@ -320,80 +322,60 @@ export function ClientDetailComponent() {
           <DialogHeader>
             <DialogTitle>Add New Contact</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleAddContact} className="space-y-4">
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">
-                Name <span className={themeColors.status.error.text}>*</span>
-              </Label>
+              <Label>Name *</Label>
               <Input
-                id="name"
                 placeholder="John Doe"
                 value={contactForm.name}
                 onChange={(e) =>
                   setContactForm({ ...contactForm, name: e.target.value })
                 }
-                required
               />
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="phone">
-                Phone <span className={themeColors.status.error.text}>*</span>
-              </Label>
+              <Label>Phone *</Label>
               <Input
-                id="phone"
-                type="tel"
-                placeholder="+1 (555) 123-4567"
+                placeholder="+1234567890"
                 value={contactForm.phone}
                 onChange={(e) =>
                   setContactForm({ ...contactForm, phone: e.target.value })
                 }
-                required
               />
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="email">
-                Email <span className={themeColors.status.error.text}>*</span>
-              </Label>
+              <Label>Email</Label>
               <Input
-                id="email"
                 type="email"
-                placeholder="john@company.com"
+                placeholder="john@example.com"
                 value={contactForm.email}
                 onChange={(e) =>
                   setContactForm({ ...contactForm, email: e.target.value })
                 }
-                required
               />
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="company">
-                Position/Role <span className={themeColors.status.error.text}>*</span>
-              </Label>
+              <Label>Position / Role</Label>
               <Input
-                id="company"
-                placeholder="Project Manager"
-                value={contactForm.company}
+                placeholder="e.g. Project Manager, CEO, Contractor"
+                value={contactForm.position}
                 onChange={(e) =>
-                  setContactForm({ ...contactForm, company: e.target.value })
+                  setContactForm({ ...contactForm, position: e.target.value })
                 }
-                required
               />
             </div>
-
-            <div className="flex gap-2 pt-4">
+            <div className="flex justify-end gap-2 pt-4">
               <Button
-                type="button"
                 variant="outline"
                 onClick={() => setIsAddContactOpen(false)}
-                disabled={isSubmitting}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
+              <Button
+                onClick={handleAddContact}
+                disabled={createContact.isPending}
+              >
+                {createContact.isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Adding...
@@ -403,7 +385,7 @@ export function ClientDetailComponent() {
                 )}
               </Button>
             </div>
-          </form>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -412,9 +394,9 @@ export function ClientDetailComponent() {
         <CreateCallDialog
           open={!!selectedContactForCall}
           onOpenChange={(open) => !open && setSelectedContactForCall(null)}
-          subcontractorId={selectedContactForCall.id}
-          subcontractorName={selectedContactForCall.name}
-          subcontractorPhone={selectedContactForCall.phone}
+          contactId={selectedContactForCall.id}
+          contactName={selectedContactForCall.name}
+          contactPhone={selectedContactForCall.phone}
           onCallCreated={() => {
             setSelectedContactForCall(null);
           }}
@@ -426,8 +408,8 @@ export function ClientDetailComponent() {
         <CallHistoryDialog
           open={!!selectedContactForHistory}
           onOpenChange={(open) => !open && setSelectedContactForHistory(null)}
-          subcontractorId={selectedContactForHistory.id}
-          subcontractorName={selectedContactForHistory.name}
+          contactId={selectedContactForHistory.id}
+          contactName={selectedContactForHistory.name}
         />
       )}
     </section>

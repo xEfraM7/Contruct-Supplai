@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get('limit') || '50');
-    const subcontractorId = searchParams.get('subcontractor_id');
+    const contactId = searchParams.get('contact_id');
 
     // Obtener llamadas de la base de datos local
     let query = supabase
@@ -23,8 +23,8 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    if (subcontractorId) {
-      query = query.eq('subcontractor_id', subcontractorId);
+    if (contactId) {
+      query = query.eq('contact_id', contactId);
     }
 
     const { data: calls, error } = await query;

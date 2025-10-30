@@ -1,16 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-interface Subcontractor {
-  id: string;
-  name: string;
-  phone: string;
-  email: string;
-  company: string;
-  status: string;
-  created_at: string;
-}
-
 interface Client {
   id: string;
   company_name: string;
@@ -20,8 +10,6 @@ interface Client {
   website: string | null;
   notes: string | null;
   status: string;
-  subcontractors_count?: number;
-  subcontractors?: Subcontractor[];
   created_at: string;
 }
 

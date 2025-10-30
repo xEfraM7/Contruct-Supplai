@@ -37,7 +37,7 @@ export async function GET(
       );
     }
 
-    // Obtener client con sus subcontractors
+    // Obtener client
     const { data: client, error: clientError } = await supabase
       .from("clients")
       .select("*")
@@ -52,23 +52,9 @@ export async function GET(
       );
     }
 
-    // Obtener subcontractors del client
-    const { data: subcontractors, error: subError } = await supabase
-      .from("subcontractors")
-      .select("*")
-      .eq("client_id", clientId)
-      .order("created_at", { ascending: false });
-
-    if (subError) {
-      console.error("Error fetching subcontractors:", subError);
-    }
-
     return NextResponse.json({
       success: true,
-      client: {
-        ...client,
-        subcontractors: subcontractors || [],
-      },
+      client,
     });
   } catch {
     return NextResponse.json(

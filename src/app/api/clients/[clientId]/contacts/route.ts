@@ -37,29 +37,16 @@ export async function GET(
       );
     }
 
-    // Verificar que el client pertenece al usuario
-    const { data: client } = await supabase
-      .from("clients")
-      .select("id")
-      .eq("id", clientId)
-      .eq("user_id", user.id)
-      .single();
-
-    if (!client) {
-      return NextResponse.json(
-        { success: false, error: "Client no encontrado" },
-        { status: 404 }
-      );
-    }
-
-    // Obtener subcontractors del client
-    const { data: subcontractors, error } = await supabase
-      .from("subcontractors")
+    // Obtener contacts del client
+    const { data: contacts, error } = await supabase
+      .from("contacts")
       .select("*")
       .eq("client_id", clientId)
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
     if (error) {
+      console.error("Error fetching contacts:", error);
       return NextResponse.json(
         { success: false, error: error.message },
         { status: 400 }
@@ -68,7 +55,7 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      subcontractors: subcontractors || [],
+      contacts: contacts || [],
     });
   } catch {
     return NextResponse.json(
@@ -84,7 +71,85 @@ export async function POST(
 ) {
   try {
     const { clientId } = await params;
-    const { name, phone, email, company, status } = await request.json();
+    const body = await request.json();
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "No autenticado" },
+        { status: 401 }
+      );
+    }
+
+    // Crear contact
+    const { data: contact, error } = await supabase
+      .from("contacts")
+      .insert({
+        user_id: user.id,
+        client_id: clientId,
+        name: body.name,
+        phone: body.phone,
+        email: body.email || null,
+        position: body.position || null,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error creating contact:", error);
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      contact,
+    });
+  } catch {
+    return NextResponse.json(
+      { success: false, error: "Error interno del servidor" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ clientId: string }> }
+) {
+  try {
+    const { clientId } = await params;
+    const { searchParams } = new URL(request.url);
+    const contactId = searchParams.get("contactId");
+
+    if (!contactId) {
+      return NextResponse.json(
+        { success: false, error: "Contact ID is required" },
+        { status: 400 }
+      );
+    }
 
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -115,35 +180,12 @@ export async function POST(
       );
     }
 
-    // Verificar que el client pertenece al usuario
-    const { data: client } = await supabase
-      .from("clients")
-      .select("id")
-      .eq("id", clientId)
-      .eq("user_id", user.id)
-      .single();
-
-    if (!client) {
-      return NextResponse.json(
-        { success: false, error: "Client no encontrado" },
-        { status: 404 }
-      );
-    }
-
-    // Crear subcontractor
-    const { data: subcontractor, error } = await supabase
-      .from("subcontractors")
-      .insert({
-        user_id: user.id,
-        client_id: clientId,
-        name,
-        phone,
-        email,
-        company,
-        status: status || "active",
-      })
-      .select()
-      .single();
+    const { error } = await supabase
+      .from("contacts")
+      .delete()
+      .eq("id", contactId)
+      .eq("client_id", clientId)
+      .eq("user_id", user.id);
 
     if (error) {
       return NextResponse.json(
@@ -152,10 +194,7 @@ export async function POST(
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      subcontractor,
-    });
+    return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json(
       { success: false, error: "Error interno del servidor" },

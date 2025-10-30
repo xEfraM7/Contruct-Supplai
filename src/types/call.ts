@@ -4,6 +4,7 @@ export interface Call {
   from_number: string;
   to_number: string;
   call_status: string;
+  direction: string | null;
   duration_ms: number | null;
   transcript: string | null;
   call_summary: string | null;
