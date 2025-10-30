@@ -40,18 +40,6 @@ import { CallHistoryDialog } from "@/components/calls/CallHistoryDialog";
 import { useClient, useDeleteClient } from "@/lib/hooks/use-clients";
 import { themeColors } from "@/lib/theme";
 
-interface Client {
-  id: string;
-  company_name: string;
-  company_email: string | null;
-  company_phone: string | null;
-  address: string | null;
-  website: string | null;
-  notes: string | null;
-  status: string;
-  subcontractors: Subcontractor[];
-}
-
 interface Subcontractor {
   id: string;
   name: string;

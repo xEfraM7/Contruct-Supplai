@@ -148,13 +148,17 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
   });
 
   const parseAnalysisResult = (text: string): AnalysisResult => {
+    console.log("[PARSE] Texto recibido:", text.substring(0, 500));
+    
+    // Buscar secciones (con o sin números y emojis)
     const requestedMatch = text.match(
-      /##\s*LO SOLICITADO\s*([\s\S]*?)(?=##\s*DISCREPANCIES|$)/i
+      /#+\s*(?:\d+\.\s*)?(?:🧱\s*)?(?:TAKEOFF|LO SOLICITADO)\s*([\s\S]*?)(?=#+\s*(?:\d+\.\s*)?(?:⚠️\s*)?(?:DISCREPANCIES|DISCREPANCIAS|🧠\s*TECHNICAL|💲\s*MATERIAL)|$)/i
     );
+
     const discrepanciesMatch = text.match(
-      /##\s*DISCREPANCIES\s*([\s\S]*?)(?=##\s*RFIs|$)/i
+      /#+\s*(?:\d+\.\s*)?(?:⚠️\s*)?(?:DISCREPANCIES|DISCREPANCIAS)\s*([\s\S]*?)(?=#+\s*(?:\d+\.\s*)?(?:📄\s*)?RFIs|$)/i
     );
-    const rfisMatch = text.match(/##\s*RFIs\s*([\s\S]*?)$/i);
+    const rfisMatch = text.match(/#+\s*(?:\d+\.\s*)?(?:📄\s*)?RFIs\s*([\s\S]*?)(?=#+\s*(?:\d+\.\s*)?(?:📊\s*)?(?:BUDGET|$))/i);
 
     // Extract items from summary table if exists
     const extractedItems: ExtractedItem[] = [];
@@ -183,9 +187,17 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
       });
     }
 
-    const tableMatch = requestedText.match(
-      /\|.*Job Category.*\|.*Recommended Equipment.*\|([\s\S]*?)(?=\n\n|All the|$)/i
+    // Buscar tabla en formato antiguo (Job Category | Recommended Equipment)
+    let tableMatch = requestedText.match(
+      /\|.*Job Category.*\|.*Recommended Equipment.*\|([\s\S]*?)(?=\n\n|All the|\*\*|$)/i
     );
+    
+    // Si no encuentra, buscar tabla en formato nuevo (Item | Unit Cost | Quantity | Total Cost)
+    if (!tableMatch) {
+      tableMatch = requestedText.match(
+        /\|.*Item.*\|.*Unit Cost.*\|.*Quantity.*\|.*Total Cost.*\|([\s\S]*?)(?=\n\n|\*\*|$)/i
+      );
+    }
 
     if (tableMatch) {
       const rows = tableMatch[1]
@@ -193,39 +205,68 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
         .filter(
           (row) => row.trim() && !row.includes("---") && !row.includes("|--")
         );
-      rows.forEach((row, index) => {
+      rows.forEach((row, rowIndex) => {
         const cells = row
           .split("|")
           .map((cell) => cell.trim())
           .filter(Boolean);
-        if (cells.length >= 4) {
-          // Extract equipment name and tag from "Equipment Name (TAG)"
-          const equipmentMatch = cells[1]?.match(/(.+?)\s*\(([^)]+)\)/);
-          const equipmentName = equipmentMatch?.[1]?.trim() || cells[1];
-          const equipmentTag = equipmentMatch?.[2]?.trim() || "";
+        if (cells.length >= 3) {
+          // Detectar formato de tabla
+          const isNewFormat = cells.length === 4 && cells[2]?.match(/^\d+$/); // Formato: Item | Unit Cost | Quantity | Total Cost
+          
+          let equipmentName: string;
+          let equipmentTag: string;
+          let cost: number;
+          let quantity: number = 1;
+          
+          if (isNewFormat) {
+            // Formato nuevo: Item | Unit Cost | Quantity | Total Cost
+            const itemMatch = cells[0]?.match(/(.+?)\s*\(([^)]+)\)/);
+            equipmentName = itemMatch?.[1]?.trim() || cells[0];
+            equipmentTag = itemMatch?.[2]?.trim() || "";
+            
+            const unitCostMatch = cells[1]?.match(/\$?\s*([0-9,]+(?:\.[0-9]{2})?)/);
+            cost = parseFloat(unitCostMatch?.[1]?.replace(/,/g, "") || "0");
+            quantity = parseInt(cells[2]) || 1;
+          } else {
+            // Formato antiguo: Job Category | Recommended Equipment | Status | Value/Cost
+            const equipmentMatch = cells[1]?.match(/(.+?)\s*\(([^)]+)\)/);
+            equipmentName = equipmentMatch?.[1]?.trim() || cells[1];
+            equipmentTag = equipmentMatch?.[2]?.trim() || "";
+            
+            const costMatch = cells[3]?.match(/\$?\s*([0-9,]+(?:\.[0-9]{2})?)/);
+            cost = parseFloat(costMatch?.[1]?.replace(/,/g, "") || "0");
+          }
 
-          // Extract cost from Value/Cost column
-          const costMatch = cells[3]?.match(/\$?\s*([0-9,]+(?:\.[0-9]{2})?)/);
-          const cost = parseFloat(costMatch?.[1]?.replace(/,/g, "") || "0");
+          // Determinar confidence basado en el status (si existe)
+          let confidence = 88; // Default
+          const statusCell = isNewFormat ? "" : cells[2] || "";
+          if (statusCell.toLowerCase().includes("available")) {
+            confidence = 92;
+          } else if (statusCell.toLowerCase().includes("checked")) {
+            confidence = 85;
+          }
 
           // Create individual items for each location
-          if (locations.length > 0) {
+          if (locations.length > 0 && !isNewFormat) {
             locations.forEach((location, locIndex) => {
+              // Generate unique ID combining row index and location index
+              const uniqueId = equipmentTag
+                ? `${equipmentTag}-${rowIndex}-${locIndex}`
+                : `ITEM-${String(rowIndex * 100 + locIndex + 1).padStart(
+                    3,
+                    "0"
+                  )}`;
+
               extractedItems.push({
-                itemId: `${equipmentTag || "ITEM"}-${String(
-                  locIndex + 1
-                ).padStart(3, "0")}`,
-                csiCode: cells[0] || "",
+                itemId: uniqueId,
+                csiCode: isNewFormat ? "" : cells[0] || "",
                 description: equipmentName,
                 quantity: location.quantity,
                 unit: "EA",
                 unitCost: cost,
                 total: cost * location.quantity,
-                confidence: cells[2]?.toLowerCase().includes("available")
-                  ? 92
-                  : cells[2]?.toLowerCase().includes("checked")
-                  ? 85
-                  : 88,
+                confidence,
                 source: location.name,
               });
             });
@@ -233,18 +274,14 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
             // Fallback: create single item
             extractedItems.push({
               itemId:
-                equipmentTag || `ITEM-${String(index + 1).padStart(3, "0")}`,
-              csiCode: cells[0] || "",
+                equipmentTag || `ITEM-${String(rowIndex + 1).padStart(3, "0")}`,
+              csiCode: isNewFormat ? "" : cells[0] || "",
               description: equipmentName,
-              quantity: 1,
+              quantity,
               unit: "EA",
               unitCost: cost,
-              total: cost,
-              confidence: cells[2]?.toLowerCase().includes("available")
-                ? 92
-                : cells[2]?.toLowerCase().includes("checked")
-                ? 85
-                : 88,
+              total: cost * quantity,
+              confidence,
               source: "Blueprint",
             });
           }
@@ -289,7 +326,7 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
 
     // Count discrepancies
     const discrepancyText = discrepanciesMatch?.[1]?.trim() || "";
-    
+
     // Check if AI explicitly says there are no discrepancies
     const noDiscrepanciesPatterns = [
       /no discrepancies/i,
@@ -300,22 +337,42 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
       /everything matches/i,
       /all requirements are met/i,
       /blueprint matches/i,
-      /inventory matches/i
+      /inventory matches/i,
     ];
-    
-    const hasNoDiscrepancies = noDiscrepanciesPatterns.some(pattern => 
+
+    const hasNoDiscrepancies = noDiscrepanciesPatterns.some((pattern) =>
       pattern.test(discrepancyText)
     );
-    
+
     // Only count actual discrepancy items if AI doesn't explicitly say there are none
-    const discrepancyCount = hasNoDiscrepancies ? 0 : discrepancyText
-      .split("\n")
-      .filter(
-        (line) => line.trim().match(/^[-•*]\s/) || line.trim().match(/^\d+\./)
-      ).length;
+    const discrepancyCount = hasNoDiscrepancies
+      ? 0
+      : discrepancyText
+          .split("\n")
+          .filter(
+            (line) =>
+              line.trim().match(/^[-•*]\s/) || line.trim().match(/^\d+\./)
+          ).length;
+
+    // Combinar todas las secciones relevantes para "requested"
+    let requestedContent = "";
+    if (requestedMatch?.[1]) {
+      requestedContent += requestedMatch[1].trim();
+    }
+    
+    // Agregar también las secciones de Technical Response y Material Cost si existen
+    const technicalMatch = text.match(/#+\s*(?:\d+\.\s*)?(?:🧠\s*)?TECHNICAL RESPONSE\s*([\s\S]*?)(?=#+\s*(?:\d+\.\s*)?(?:💲\s*)?(?:MATERIAL|DISCREPANCIES)|$)/i);
+    const costMatch = text.match(/#+\s*(?:\d+\.\s*)?(?:💲\s*)?MATERIAL COST ESTIMATION\s*([\s\S]*?)(?=#+\s*(?:\d+\.\s*)?(?:⚠️\s*)?(?:DISCREPANCIES|BUDGET)|$)/i);
+    
+    if (technicalMatch?.[1]) {
+      requestedContent += "\n\n" + technicalMatch[1].trim();
+    }
+    if (costMatch?.[1]) {
+      requestedContent += "\n\n" + costMatch[1].trim();
+    }
 
     return {
-      requested: requestedMatch?.[1]?.trim() || "Not available",
+      requested: requestedContent || "Not available",
       discrepancies: discrepancyText || "No discrepancies detected",
       rfis: rfisMatch?.[1]?.trim() || "No RFIs required",
       extractedItems: extractedItems.length > 0 ? extractedItems : undefined,
@@ -402,10 +459,20 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
         });
       }
 
-      const json = await res.json();
-
       // Esperar a que termine la simulación de progreso
       await progressPromise;
+
+      // Verificar si la respuesta es JSON válido
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await res.text();
+        console.error("Non-JSON response:", text);
+        throw new Error(
+          `Server returned non-JSON response (${res.status}): ${text.substring(0, 200)}`
+        );
+      }
+
+      const json = await res.json();
 
       if (!res.ok) {
         throw new Error(json.error || "Unexpected error");
@@ -660,7 +727,9 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
 
               {/* Error */}
               {error && (
-                <div className={`mt-6 p-4 rounded text-sm border ${themeColors.status.error.bg} ${themeColors.status.error.text} ${themeColors.status.error.border}`}>
+                <div
+                  className={`mt-6 p-4 rounded text-sm border ${themeColors.status.error.bg} ${themeColors.status.error.text} ${themeColors.status.error.border}`}
+                >
                   <h4 className="text-md font-semibold mb-2">Error:</h4>
                   {error}
                 </div>
@@ -866,7 +935,8 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                                                 "h-full",
                                                 item.confidence >= 90
                                                   ? themeColors.confidence.high
-                                                  : themeColors.confidence.medium
+                                                  : themeColors.confidence
+                                                      .medium
                                               )}
                                               style={{
                                                 width: `${item.confidence}%`,
@@ -890,19 +960,27 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                             </div>
 
                             {/* Budget Summary */}
-                            <div className={`mt-6 p-4 rounded-lg border ${themeColors.cards.budget.bg} ${themeColors.cards.budget.border}`}>
+                            <div
+                              className={`mt-6 p-4 rounded-lg border ${themeColors.cards.budget.bg} ${themeColors.cards.budget.border}`}
+                            >
                               <div className="flex flex-col gap-4">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                   <div>
-                                    <h4 className={`text-lg font-semibold mb-1 ${themeColors.cards.budget.title}`}>
+                                    <h4
+                                      className={`text-lg font-semibold mb-1 ${themeColors.cards.budget.title}`}
+                                    >
                                       Project Budget Summary
                                     </h4>
-                                    <p className={`text-sm ${themeColors.cards.budget.text}`}>
+                                    <p
+                                      className={`text-sm ${themeColors.cards.budget.text}`}
+                                    >
                                       Cost breakdown for extracted items
                                     </p>
                                   </div>
                                   <div className="text-right">
-                                    <div className={`text-2xl font-bold ${themeColors.cards.budget.title}`}>
+                                    <div
+                                      className={`text-2xl font-bold ${themeColors.cards.budget.title}`}
+                                    >
                                       $
                                       {(
                                         (analysisResult.totalCostAvailable ||
@@ -910,30 +988,42 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                                         (analysisResult.totalCostNeeded || 0)
                                       ).toFixed(2)}
                                     </div>
-                                    <div className={`text-xs ${themeColors.cards.budget.text}`}>
+                                    <div
+                                      className={`text-xs ${themeColors.cards.budget.text}`}
+                                    >
                                       Total Project Cost
                                     </div>
                                   </div>
                                 </div>
 
                                 {/* Detailed Breakdown */}
-                                <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t ${themeColors.cards.budget.border}`}>
+                                <div
+                                  className={`grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t ${themeColors.cards.budget.border}`}
+                                >
                                   {/* Available Items */}
                                   {analysisResult.totalCostAvailable &&
                                     analysisResult.totalCostAvailable > 0 && (
-                                      <div className={`rounded-lg p-3 border ${themeColors.cards.inventory.bg} ${themeColors.cards.inventory.border}`}>
+                                      <div
+                                        className={`rounded-lg p-3 border ${themeColors.cards.inventory.bg} ${themeColors.cards.inventory.border}`}
+                                      >
                                         <div className="flex items-center justify-between mb-2">
-                                          <h5 className={`font-semibold ${themeColors.cards.inventory.title}`}>
+                                          <h5
+                                            className={`font-semibold ${themeColors.cards.inventory.title}`}
+                                          >
                                             From Inventory
                                           </h5>
-                                          <span className={`text-lg font-bold ${themeColors.cards.inventory.title}`}>
+                                          <span
+                                            className={`text-lg font-bold ${themeColors.cards.inventory.title}`}
+                                          >
                                             $
                                             {analysisResult.totalCostAvailable.toFixed(
                                               2
                                             )}
                                           </span>
                                         </div>
-                                        <p className={`text-sm ${themeColors.cards.inventory.text}`}>
+                                        <p
+                                          className={`text-sm ${themeColors.cards.inventory.text}`}
+                                        >
                                           {analysisResult.availableItemsCount ||
                                             0}{" "}
                                           items available in inventory
@@ -944,19 +1034,27 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                                   {/* Needed Items */}
                                   {analysisResult.totalCostNeeded &&
                                     analysisResult.totalCostNeeded > 0 && (
-                                      <div className={`rounded-lg p-3 border ${themeColors.cards.needed.bg} ${themeColors.cards.needed.border}`}>
+                                      <div
+                                        className={`rounded-lg p-3 border ${themeColors.cards.needed.bg} ${themeColors.cards.needed.border}`}
+                                      >
                                         <div className="flex items-center justify-between mb-2">
-                                          <h5 className={`font-semibold ${themeColors.cards.needed.title}`}>
+                                          <h5
+                                            className={`font-semibold ${themeColors.cards.needed.title}`}
+                                          >
                                             Need to Acquire
                                           </h5>
-                                          <span className={`text-lg font-bold ${themeColors.cards.needed.title}`}>
+                                          <span
+                                            className={`text-lg font-bold ${themeColors.cards.needed.title}`}
+                                          >
                                             $
                                             {analysisResult.totalCostNeeded.toFixed(
                                               2
                                             )}
                                           </span>
                                         </div>
-                                        <p className={`text-sm ${themeColors.cards.needed.text}`}>
+                                        <p
+                                          className={`text-sm ${themeColors.cards.needed.text}`}
+                                        >
                                           {analysisResult.neededItemsCount || 0}{" "}
                                           items to purchase/rent
                                         </p>
@@ -969,22 +1067,32 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                             {/* Discrepancies Alert */}
                             {analysisResult.discrepancyCount &&
                               analysisResult.discrepancyCount > 0 && (
-                                <div className={`mt-6 p-4 rounded-lg border ${themeColors.cards.alert.bg} ${themeColors.cards.alert.border}`}>
+                                <div
+                                  className={`mt-6 p-4 rounded-lg border ${themeColors.cards.alert.bg} ${themeColors.cards.alert.border}`}
+                                >
                                   <div className="flex items-start gap-3">
-                                    <AlertTriangle className={`w-5 h-5 mt-0.5 shrink-0 ${themeColors.cards.alert.icon}`} />
+                                    <AlertTriangle
+                                      className={`w-5 h-5 mt-0.5 shrink-0 ${themeColors.cards.alert.icon}`}
+                                    />
                                     <div className="flex-1">
-                                      <h4 className={`text-sm font-semibold mb-1 ${themeColors.cards.alert.title}`}>
+                                      <h4
+                                        className={`text-sm font-semibold mb-1 ${themeColors.cards.alert.title}`}
+                                      >
                                         {analysisResult.discrepancyCount}{" "}
                                         Discrepancies Detected
                                       </h4>
-                                      <p className={`text-sm mb-3 ${themeColors.cards.alert.text}`}>
+                                      <p
+                                        className={`text-sm mb-3 ${themeColors.cards.alert.text}`}
+                                      >
                                         Our AI has identified conflicts between
                                         blueprints and schedules
                                       </p>
                                       <Button
                                         size="sm"
                                         variant="destructive"
-                                        className={themeColors.interactive.delete.button}
+                                        className={
+                                          themeColors.interactive.delete.button
+                                        }
                                         onClick={() =>
                                           setActiveMenu("Discrepancies")
                                         }
@@ -1031,7 +1139,9 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
               {analysisResult ? (
                 <div className="p-4 border rounded bg-muted/30 whitespace-pre-wrap text-sm">
                   <h4 className="text-md font-semibold mb-4 flex items-center gap-2">
-                    <FileQuestion className={`w-5 h-5 ${themeColors.status.info.icon}`} />
+                    <FileQuestion
+                      className={`w-5 h-5 ${themeColors.status.info.icon}`}
+                    />
                     RFIs (Requests for Information):
                   </h4>
                   {analysisResult.rfis}
@@ -1222,7 +1332,9 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                     }`}
                   >
                     {index < progressStep ? (
-                      <CheckCircle2 className={`w-5 h-5 flex-shrink-0 ${themeColors.status.success.icon}`} />
+                      <CheckCircle2
+                        className={`w-5 h-5 flex-shrink-0 ${themeColors.status.success.icon}`}
+                      />
                     ) : index === progressStep ? (
                       <Loader2 className="w-5 h-5 text-primary animate-spin flex-shrink-0" />
                     ) : (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { Call } from "@/types/call";
 
 export function useCallHistoryDialog(subcontractorId: string, open: boolean) {
@@ -8,13 +8,7 @@ export function useCallHistoryDialog(subcontractorId: string, open: boolean) {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
-    if (open && subcontractorId) {
-      fetchCalls();
-    }
-  }, [open, subcontractorId]);
-
-  const fetchCalls = async () => {
+  const fetchCalls = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await fetch(`/api/calls/subcontractor/${subcontractorId}`);
@@ -28,7 +22,13 @@ export function useCallHistoryDialog(subcontractorId: string, open: boolean) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [subcontractorId]);
+
+  useEffect(() => {
+    if (open && subcontractorId) {
+      fetchCalls();
+    }
+  }, [open, subcontractorId, fetchCalls]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
