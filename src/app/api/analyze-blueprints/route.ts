@@ -10,47 +10,35 @@ export async function POST(req: NextRequest) {
   try {
     console.log("[ANALYZE_BLUEPRINT] Iniciando análisis...");
 
-    const formData = await req.formData();
-    const file = formData.get("file") as File | null;
-    const fileUrl = formData.get("fileUrl") as string | null;
-    const fileName = formData.get("fileName") as string | null;
-    const prompt = formData.get("prompt") as string;
-    const category = formData.get("category") as string;
+    const body = await req.json();
+    const { fileUrl, fileName, prompt, category } = body;
 
     console.log("[ANALYZE_BLUEPRINT] Datos recibidos:", {
-      fileName: file?.name || fileName,
-      fileSize: file
-        ? `${(file.size / 1024 / 1024).toFixed(2)} MB`
-        : "From URL",
+      fileName,
+      fileUrl: fileUrl ? "Provided" : "Missing",
       category,
-      hasFileUrl: !!fileUrl,
     });
 
-    if ((!file && !fileUrl) || !prompt) {
+    if (!fileUrl || !fileName || !prompt) {
       return NextResponse.json(
-        { error: "Archivo (o URL) y prompt son requeridos." },
+        { error: "fileUrl, fileName y prompt son requeridos." },
         { status: 400 }
       );
     }
 
-    // Si tenemos una URL, descargar el archivo
-    let fileToUpload: File;
-    if (fileUrl && fileName) {
-      console.log("[ANALYZE_BLUEPRINT] Descargando archivo desde URL...");
-      const response = await fetch(fileUrl);
-      if (!response.ok) {
-        throw new Error("Failed to download file from URL");
-      }
-      const blob = await response.blob();
-      fileToUpload = new File([blob], fileName, { type: "application/pdf" });
-      console.log("[ANALYZE_BLUEPRINT] Archivo descargado:", {
-        size: `${(fileToUpload.size / 1024 / 1024).toFixed(2)} MB`,
-      });
-    } else if (file) {
-      fileToUpload = file;
-    } else {
-      throw new Error("No file or fileUrl provided");
+    // Descargar el archivo desde Supabase Storage
+    console.log("[ANALYZE_BLUEPRINT] Descargando archivo desde Supabase...");
+    const response = await fetch(fileUrl);
+    if (!response.ok) {
+      throw new Error("Failed to download file from Supabase Storage");
     }
+    const blob = await response.blob();
+    const fileToUpload = new File([blob], fileName, {
+      type: "application/pdf",
+    });
+    console.log("[ANALYZE_BLUEPRINT] Archivo descargado:", {
+      size: `${(fileToUpload.size / 1024 / 1024).toFixed(2)} MB`,
+    });
 
     const finalCategory = category || "General";
 

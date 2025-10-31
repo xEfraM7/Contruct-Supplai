@@ -114,29 +114,44 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
       const progressPromise = simulateProgress(progressSteps, setProgressStep);
 
       const blueprintIdToUse = data.selectedBlueprintId;
-      let mutationData: {
-        file?: File;
-        fileUrl?: string;
-        fileName?: string;
-        prompt: string;
-        category: string;
-        blueprintId?: string;
-        uploadMode: "new" | "existing";
-      };
+      let fileUrl: string;
+      let fileName: string;
 
       if (data.uploadMode === "new") {
         if (!data.file || data.file.length === 0) {
           throw new Error("Please upload a file");
         }
-        mutationData = {
-          file: data.file[0],
-          prompt: data.prompt,
-          category: data.category || "General",
-          blueprintId: blueprintIdToUse || undefined,
-          uploadMode: data.uploadMode,
-        };
+
+        // Subir archivo directamente a Supabase Storage desde el cliente
+        const file = data.file[0];
+        const { createClient } = await import("@/lib/supabase/client");
+        const supabase = createClient();
+
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not authenticated");
+
+        // Generar nombre único para el archivo
+        const timestamp = Date.now();
+        const filePath = `temp/${user.id}/${timestamp}-${file.name}`;
+
+        // Subir a Supabase Storage
+        const { error: uploadError } = await supabase.storage
+          .from("blueprints")
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        // Obtener URL pública
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("blueprints").getPublicUrl(filePath);
+
+        fileUrl = publicUrl;
+        fileName = file.name;
       } else {
-        // Modo existente: enviar URL en lugar de descargar el archivo
+        // Modo existente: usar blueprint ya subido
         const selectedBlueprint = blueprints.find(
           (b: Blueprint) => b.id === data.selectedBlueprintId
         );
@@ -144,21 +159,22 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
           throw new Error("Blueprint not found");
         }
 
-        mutationData = {
-          fileUrl: selectedBlueprint.fileUrl,
-          fileName: selectedBlueprint.fileName,
-          prompt: data.prompt,
-          category: data.category || "General",
-          blueprintId: blueprintIdToUse || undefined,
-          uploadMode: data.uploadMode,
-        };
+        fileUrl = selectedBlueprint.fileUrl;
+        fileName = selectedBlueprint.fileName;
       }
 
       // Esperar a que termine la simulación de progreso
       await progressPromise;
 
-      // Ejecutar la mutation
-      await analyzeBlueprintMutation.mutateAsync(mutationData);
+      // Ejecutar la mutation solo con la URL
+      await analyzeBlueprintMutation.mutateAsync({
+        fileUrl,
+        fileName,
+        prompt: data.prompt,
+        category: data.category || "General",
+        blueprintId: blueprintIdToUse || undefined,
+        uploadMode: data.uploadMode,
+      });
     } catch {
       setShowProgressModal(false);
     }

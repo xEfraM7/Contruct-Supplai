@@ -58,7 +58,6 @@ export const useAnalyzeBlueprint = (
 
   return useMutation({
     mutationFn: async ({
-      file,
       fileUrl,
       fileName,
       prompt,
@@ -66,29 +65,25 @@ export const useAnalyzeBlueprint = (
       blueprintId,
       uploadMode,
     }: {
-      file?: File;
-      fileUrl?: string;
-      fileName?: string;
+      fileUrl: string;
+      fileName: string;
       prompt: string;
       category: string;
       blueprintId?: string;
       uploadMode: "new" | "existing";
     }) => {
-      const formData = new FormData();
-      
-      if (file) {
-        formData.append("file", file);
-      } else if (fileUrl && fileName) {
-        formData.append("fileUrl", fileUrl);
-        formData.append("fileName", fileName);
-      }
-      
-      formData.append("category", category);
-      formData.append("prompt", prompt);
-
+      // Enviar solo la URL, no el archivo
       const response = await fetch("/api/analyze-blueprints", {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fileUrl,
+          fileName,
+          category,
+          prompt,
+        }),
       });
 
       const contentType = response.headers.get("content-type");
@@ -107,7 +102,8 @@ export const useAnalyzeBlueprint = (
       return {
         result: json.result,
         blueprintId,
-        file,
+        fileUrl,
+        fileName,
         category,
         prompt,
         uploadMode,
@@ -120,16 +116,18 @@ export const useAnalyzeBlueprint = (
 
       let blueprintId = data.blueprintId;
 
-      // Save blueprint if new upload
-      if (data.uploadMode === "new" && data.file) {
-        const blueprintFormData = new FormData();
-        blueprintFormData.append("file", data.file);
-        blueprintFormData.append("project_id", projectId);
-        blueprintFormData.append("category", data.category || "General");
-
-        const blueprintResponse = await fetch("/api/blueprints", {
+      // Save blueprint if new upload - ya está subido a Supabase, solo guardar metadata
+      if (data.uploadMode === "new") {
+        // El archivo ya está en Supabase Storage, solo guardar el registro en la BD
+        const blueprintResponse = await fetch("/api/blueprints/metadata", {
           method: "POST",
-          body: blueprintFormData,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            project_id: projectId,
+            file_name: data.fileName,
+            file_url: data.fileUrl,
+            category: data.category || "General",
+          }),
         });
 
         if (blueprintResponse.ok) {
