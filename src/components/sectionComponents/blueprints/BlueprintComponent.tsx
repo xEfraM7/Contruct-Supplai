@@ -94,9 +94,7 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
 
   // Mutation for analyzing blueprints
   const analyzeBlueprintMutation = useAnalyzeBlueprint(projectId, (result) => {
-    console.log("[COMPONENT] Received result from API:", result);
     const parsed = parseAnalysisResult(result);
-    console.log("[COMPONENT] Parsed result:", parsed);
     setAnalysisResult(parsed);
     setActiveMenu("Jobs");
     setTimeout(() => {

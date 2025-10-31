@@ -157,25 +157,27 @@ You must ALWAYS respond using these EXACT section headers and this structure (ca
 
 ### ## TAKEOFF
 
-- Identify and summarize all key construction components detected in the blueprint for the selected category.
-- Group them logically by system or location (e.g., *Toilet Rooms, Electrical Rooms, Roof Level, etc.*).
-- For each detected item, show measured or estimated **quantities**, **specifications**, and **units**.
-- When possible, match detected elements to **equipment or materials available in the inventory**.
-- Use a table to calculate costs and totals using inventory pricing.
-
-Example:
+**CRITICAL: You MUST include a cost table in this section using EXACTLY this format:**
 
 | Item | Unit | Quantity | Unit Cost | Total Cost |
 |------|------|-----------|-----------|------------|
-| Generator 7500W (EQ‑070) | each | 1 | $2,200 | $2,200 |
-| Air Compressor (EQ‑045) | each | 2 | $850 | $1,700 |
+| Main Service Panel | each | 1 | $5,000 | $5,000 |
+| Distribution Panel | each | 3 | $1,200 | $3,600 |
 
-**Total Cost for Available Items:** $3,900  
-**Additional Items Needed:** [List missing components not covered by inventory]
+**Rules for the table:**
+1. The table MUST have exactly 5 columns: Item, Unit, Quantity, Unit Cost, Total Cost
+2. Each row MUST represent a specific material or equipment item
+3. Use items from the provided inventory when possible
+4. Include at least 3-5 items in the table
+5. Calculate Total Cost = Quantity × Unit Cost
+6. After the table, include: **Total Cost for Available Items:** $X,XXX
 
-> Notes:
-> - Use only items that exist in the provided inventory.
-> - If no matching inventory item exists, list it under "Additional Items Needed" without cost.
+**Before the table, provide:**
+- Brief summary of detected components grouped by location or system
+- Quantities and specifications for major elements
+
+**After the table, list:**
+- **Additional Items Needed:** Items not in inventory that need to be procured
 
 ---
 
