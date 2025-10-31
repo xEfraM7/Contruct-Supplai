@@ -148,17 +148,17 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
   });
 
   const parseAnalysisResult = (text: string): AnalysisResult => {
-    console.log("[PARSE] Texto recibido:", text.substring(0, 500));
+    console.log("[PARSE] Texto completo recibido:", text);
     
-    // Buscar secciones (con o sin números)
+    // Buscar secciones con headers exactos (sin números)
     const requestedMatch = text.match(
-      /#+\s*(?:\d+\.\s*)?(?:TAKEOFF|LO SOLICITADO)\s*([\s\S]*?)(?=#+\s*(?:\d+\.\s*)?(?:DISCREPANCIES|DISCREPANCIAS|TECHNICAL|MATERIAL)|$)/i
+      /##\s*TAKEOFF\s*([\s\S]*?)(?=##\s*(?:DISCREPANCIES|RFIs)|$)/i
     );
 
     const discrepanciesMatch = text.match(
-      /#+\s*(?:\d+\.\s*)?(?:DISCREPANCIES|DISCREPANCIAS)\s*([\s\S]*?)(?=#+\s*(?:\d+\.\s*)?RFIs|$)/i
+      /##\s*DISCREPANCIES\s*([\s\S]*?)(?=##\s*RFIs|$)/i
     );
-    const rfisMatch = text.match(/#+\s*(?:\d+\.\s*)?RFIs\s*([\s\S]*?)(?=#+\s*(?:\d+\.\s*)?(?:BUDGET|$))/i);
+    const rfisMatch = text.match(/##\s*RFIs\s*([\s\S]*?)$/i);
 
     // Extract items from summary table if exists
     const extractedItems: ExtractedItem[] = [];
@@ -187,16 +187,14 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
       });
     }
 
-    // Buscar tabla en formato antiguo (Job Category | Recommended Equipment)
-    let tableMatch = requestedText.match(
-      /\|.*Job Category.*\|.*Recommended Equipment.*\|([\s\S]*?)(?=\n\n|All the|\*\*|$)/i
+    // Buscar tabla en formato estándar (Item | Unit Cost | Quantity | Total Cost)
+    const tableMatch = requestedText.match(
+      /\|\s*Item\s*\|\s*Unit Cost\s*\|\s*Quantity\s*\|\s*Total Cost\s*\|([\s\S]*?)(?=\n\n|\*\*Total Cost for|$)/i
     );
     
-    // Si no encuentra, buscar tabla en formato nuevo (Item | Unit Cost | Quantity | Total Cost)
-    if (!tableMatch) {
-      tableMatch = requestedText.match(
-        /\|.*Item.*\|.*Unit Cost.*\|.*Quantity.*\|.*Total Cost.*\|([\s\S]*?)(?=\n\n|\*\*|$)/i
-      );
+    console.log("[PARSE] Tabla encontrada:", !!tableMatch);
+    if (tableMatch) {
+      console.log("[PARSE] Contenido de tabla:", tableMatch[1]);
     }
 
     if (tableMatch) {
@@ -210,57 +208,35 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
           .split("|")
           .map((cell) => cell.trim())
           .filter(Boolean);
-        if (cells.length >= 3) {
-          // Detectar formato de tabla
-          const isNewFormat = cells.length === 4 && cells[2]?.match(/^\d+$/); // Formato: Item | Unit Cost | Quantity | Total Cost
+        
+        // Formato estándar: Item | Unit Cost | Quantity | Total Cost
+        if (cells.length >= 4) {
+          // Extraer nombre y tag del equipo: "Equipment Name (TAG)"
+          const itemMatch = cells[0]?.match(/(.+?)\s*\(([^)]+)\)/);
+          const equipmentName = itemMatch?.[1]?.trim() || cells[0];
+          const equipmentTag = itemMatch?.[2]?.trim() || "";
           
-          let equipmentName: string;
-          let equipmentTag: string;
-          let cost: number;
-          let quantity: number = 1;
+          // Extraer costo unitario
+          const unitCostMatch = cells[1]?.match(/\$?\s*([0-9,]+(?:\.[0-9]{2})?)/);
+          const cost = parseFloat(unitCostMatch?.[1]?.replace(/,/g, "") || "0");
           
-          if (isNewFormat) {
-            // Formato nuevo: Item | Unit Cost | Quantity | Total Cost
-            const itemMatch = cells[0]?.match(/(.+?)\s*\(([^)]+)\)/);
-            equipmentName = itemMatch?.[1]?.trim() || cells[0];
-            equipmentTag = itemMatch?.[2]?.trim() || "";
-            
-            const unitCostMatch = cells[1]?.match(/\$?\s*([0-9,]+(?:\.[0-9]{2})?)/);
-            cost = parseFloat(unitCostMatch?.[1]?.replace(/,/g, "") || "0");
-            quantity = parseInt(cells[2]) || 1;
-          } else {
-            // Formato antiguo: Job Category | Recommended Equipment | Status | Value/Cost
-            const equipmentMatch = cells[1]?.match(/(.+?)\s*\(([^)]+)\)/);
-            equipmentName = equipmentMatch?.[1]?.trim() || cells[1];
-            equipmentTag = equipmentMatch?.[2]?.trim() || "";
-            
-            const costMatch = cells[3]?.match(/\$?\s*([0-9,]+(?:\.[0-9]{2})?)/);
-            cost = parseFloat(costMatch?.[1]?.replace(/,/g, "") || "0");
-          }
-
-          // Determinar confidence basado en el status (si existe)
-          let confidence = 88; // Default
-          const statusCell = isNewFormat ? "" : cells[2] || "";
-          if (statusCell.toLowerCase().includes("available")) {
-            confidence = 92;
-          } else if (statusCell.toLowerCase().includes("checked")) {
-            confidence = 85;
-          }
+          // Extraer cantidad
+          const quantity = parseInt(cells[2]) || 1;
+          
+          // Determinar confidence: 92% si está en inventario, 85% si no
+          const confidence = equipmentTag ? 92 : 85;
 
           // Create individual items for each location
-          if (locations.length > 0 && !isNewFormat) {
+          if (locations.length > 0) {
             locations.forEach((location, locIndex) => {
               // Generate unique ID combining row index and location index
               const uniqueId = equipmentTag
                 ? `${equipmentTag}-${rowIndex}-${locIndex}`
-                : `ITEM-${String(rowIndex * 100 + locIndex + 1).padStart(
-                    3,
-                    "0"
-                  )}`;
+                : `ITEM-${String(rowIndex * 100 + locIndex + 1).padStart(3, "0")}`;
 
               extractedItems.push({
                 itemId: uniqueId,
-                csiCode: isNewFormat ? "" : cells[0] || "",
+                csiCode: "",
                 description: equipmentName,
                 quantity: location.quantity,
                 unit: "EA",
@@ -273,9 +249,8 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
           } else {
             // Fallback: create single item
             extractedItems.push({
-              itemId:
-                equipmentTag || `ITEM-${String(rowIndex + 1).padStart(3, "0")}`,
-              csiCode: isNewFormat ? "" : cells[0] || "",
+              itemId: equipmentTag || `ITEM-${String(rowIndex + 1).padStart(3, "0")}`,
+              csiCode: "",
               description: equipmentName,
               quantity,
               unit: "EA",
@@ -354,25 +329,16 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
               line.trim().match(/^[-•*]\s/) || line.trim().match(/^\d+\./)
           ).length;
 
-    // Combinar todas las secciones relevantes para "requested"
-    let requestedContent = "";
-    if (requestedMatch?.[1]) {
-      requestedContent += requestedMatch[1].trim();
-    }
-    
-    // Agregar también las secciones de Technical Response y Material Cost si existen
-    const technicalMatch = text.match(/#+\s*(?:\d+\.\s*)?TECHNICAL RESPONSE\s*([\s\S]*?)(?=#+\s*(?:\d+\.\s*)?(?:MATERIAL|DISCREPANCIES)|$)/i);
-    const costMatch = text.match(/#+\s*(?:\d+\.\s*)?MATERIAL COST ESTIMATION\s*([\s\S]*?)(?=#+\s*(?:\d+\.\s*)?(?:DISCREPANCIES|BUDGET)|$)/i);
-    
-    if (technicalMatch?.[1]) {
-      requestedContent += "\n\n" + technicalMatch[1].trim();
-    }
-    if (costMatch?.[1]) {
-      requestedContent += "\n\n" + costMatch[1].trim();
-    }
+    // Usar solo la sección TAKEOFF para "requested"
+    const requestedContent = requestedMatch?.[1]?.trim() || "Not available";
+
+    console.log("[PARSE] Items extraídos:", extractedItems.length);
+    console.log("[PARSE] Discrepancy count:", discrepancyCount);
+    console.log("[PARSE] Total cost available:", totalCostAvailable);
+    console.log("[PARSE] Total cost needed:", totalCostNeeded);
 
     return {
-      requested: requestedContent || "Not available",
+      requested: requestedContent,
       discrepancies: discrepancyText || "No discrepancies detected",
       rfis: rfisMatch?.[1]?.trim() || "No RFIs required",
       extractedItems: extractedItems.length > 0 ? extractedItems : undefined,
@@ -663,7 +629,7 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                         {file ? file.name : "Click to upload or drag and drop"}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        PDF files up to 25MB
+                        PDF files up to 150MB
                       </p>
                     </label>
                   </div>

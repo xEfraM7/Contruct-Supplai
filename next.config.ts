@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   experimental: {
     // Aumentar el límite de body para todas las rutas API
     serverActions: {
-      bodySizeLimit: '25mb',
+      bodySizeLimit: '150mb',
     },
   },
 };

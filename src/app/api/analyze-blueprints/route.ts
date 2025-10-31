@@ -126,79 +126,71 @@ You are a senior construction plan review expert with experience in analyzing ar
 
 ---
 
-Respond using the following exact structure and headers:
-
----
+CRITICAL: You MUST respond using EXACTLY these section headers (case-sensitive, no variations):
 
 ## TAKEOFF
 
-- Summarize the key construction elements detected in the plan.
-- Group all detected components by job category (e.g., Electrical, Plumbing).
-- List quantities and specifications for each element.
+Summarize the key construction elements detected in the plan.
+- Group all detected components by job category (e.g., Electrical, Plumbing)
+- List quantities and specifications for each element
+- Include location details (e.g., Toilet Rooms, Kitchen, etc.)
 
----
+Example format:
+- **Toilet Rooms**: 2 units required
+- **Kitchen**: 1 unit required
 
-## TECHNICAL RESPONSE
-
-- Provide technical specifications and requirements.
-- Reference standards and codes where applicable.
-- Detail installation or construction methods.
-
----
-
-## MATERIAL COST ESTIMATION
-
-Create a detailed cost table using equipment from the inventory:
+Then create a detailed cost table using equipment from the inventory:
 
 | Item | Unit Cost | Quantity | Total Cost |
 |------|-----------|----------|------------|
 | Generator 7500W (EQ-070) | $2,200 | 1 | $2,200 |
+| Air Compressor (EQ-045) | $850 | 2 | $1,700 |
 
-**Estimated Total:** $X,XXX
+**Total Cost for Available:** 2 x $2,200 = $3,900
 
-For each item:
-- Use actual equipment from inventory with tags
-- Show status (Available, Checked Out, Maintenance)
-- Use exact costs from inventory
-- Flag missing items not in inventory
+For each item in the table:
+- Use format: Equipment Name (TAG)
+- Show exact costs from inventory
+- Include quantity and total cost
+- Use only equipment from the provided inventory
 
 ---
 
 ## DISCREPANCIES
 
-- List all drawing issues or technical inconsistencies found in the blueprint:
-  - Misalignments, missing dimensions, annotation issues
-  - Structural vs. MEP conflicts
-  - Ambiguities that prevent proper execution
-  - Equipment availability conflicts
+List all drawing issues or technical inconsistencies found in the blueprint.
+
+If there are NO discrepancies, you MUST write: "No discrepancies detected."
+
+If there ARE discrepancies, list them as:
+- Misalignments, missing dimensions, annotation issues
+- Structural vs. MEP conflicts
+- Ambiguities that prevent proper execution
+- Equipment availability conflicts
 
 ---
 
 ## RFIs
 
-- Generate formal Requests for Information to clarify:
-  - Missing specs, material selections, load capacities, sequencing
-  - Any assumption that cannot be safely made
+Generate formal Requests for Information to clarify missing or ambiguous information.
 
-Number each RFI clearly (RFI-01, RFI-02, etc.).
+If there are NO RFIs needed, you MUST write: "No RFIs required."
 
----
-
-## BUDGET SUMMARY
-
-- Total materials cost
-- Contingency budget (if applicable)
-- Overall project budget estimate
+If RFIs are needed, number each clearly:
+- RFI-01: [Description]
+- RFI-02: [Description]
 
 ---
 
-### RULES:
+### CRITICAL RULES:
 
-- Never guess or invent missing information.  
-- Raise RFIs instead of making assumptions.  
-- Use only what is in the blueprint and the inventory.  
-- Keep language concise and technical for construction field teams.
-- Always use the exact section headers shown above.
+1. Use EXACTLY these headers: ## TAKEOFF, ## DISCREPANCIES, ## RFIs
+2. Do NOT add numbers before headers (e.g., "1. TAKEOFF" is WRONG)
+3. Do NOT use alternative names (e.g., "LO SOLICITADO" is WRONG)
+4. Always include the cost table in the TAKEOFF section
+5. Never guess or invent missing information
+6. If no discrepancies exist, explicitly state "No discrepancies detected"
+7. If no RFIs needed, explicitly state "No RFIs required"
   `,
       model: "gpt-4o",
       tools: [{ type: "file_search" }],
@@ -251,8 +243,8 @@ Use engineering judgment but do not guess or assume anything not visible in the 
     }
 
     // Obtener resultado
-    const messages = await openai.beta.threads.messages.list(thread.id);
-    const assistantMessage = messages.data.find(
+    const messagesList = await openai.beta.threads.messages.list(thread.id);
+    const assistantMessage = messagesList.data.find(
       (msg) => msg.role === "assistant"
     );
 
@@ -266,7 +258,7 @@ Use engineering judgment but do not guess or assume anything not visible in the 
 
     // Paso 1: Ver respuesta cruda
     console.log("[OPENAI RAW RESPONSE]");
-    console.log(JSON.stringify(messages.data, null, 2));
+    console.log(JSON.stringify(messagesList.data, null, 2));
 
     // Paso 2: Ver resultado final que irá al frontend
     console.log("[AI FINAL RESULT]");
