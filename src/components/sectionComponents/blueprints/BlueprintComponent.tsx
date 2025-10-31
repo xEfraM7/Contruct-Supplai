@@ -94,9 +94,7 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
 
   // Mutation for analyzing blueprints
   const analyzeBlueprintMutation = useAnalyzeBlueprint(projectId, (result) => {
-    console.log("[COMPONENT] Received result from API:", result);
     const parsed = parseAnalysisResult(result);
-    console.log("[COMPONENT] Parsed result:", parsed);
     setAnalysisResult(parsed);
     setActiveMenu("Jobs");
     setTimeout(() => {
@@ -113,16 +111,60 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
       // Iniciar simulación de progreso
       const progressPromise = simulateProgress(progressSteps, setProgressStep);
 
-      let fileToAnalyze: File;
       const blueprintIdToUse = data.selectedBlueprintId;
+      let fileUrl: string;
+      let fileName: string;
 
       if (data.uploadMode === "new") {
         if (!data.file || data.file.length === 0) {
           throw new Error("Please upload a file");
         }
-        fileToAnalyze = data.file[0];
+
+        // Subir archivo directamente a Supabase Storage desde el cliente
+        const file = data.file[0];
+        const { createClient } = await import("@/lib/supabase/client");
+        const supabase = createClient();
+
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not authenticated");
+
+        // Sanitizar nombre del archivo (remover caracteres especiales y espacios)
+        const sanitizedFileName = file.name
+          .replace(/[^a-zA-Z0-9.-]/g, "_") // Reemplazar caracteres especiales con _
+          .replace(/_{2,}/g, "_") // Reemplazar múltiples _ con uno solo
+          .replace(/^_|_$/g, ""); // Remover _ al inicio y final
+
+        // Generar nombre único para el archivo
+        const timestamp = Date.now();
+        const filePath = `temp/${user.id}/${timestamp}-${sanitizedFileName}`;
+
+        console.log("[UPLOAD] Subiendo archivo:", {
+          original: file.name,
+          sanitized: sanitizedFileName,
+          path: filePath,
+        });
+
+        // Subir a Supabase Storage
+        const { error: uploadError } = await supabase.storage
+          .from("blueprints")
+          .upload(filePath, file);
+
+        if (uploadError) {
+          console.error("[UPLOAD] Error:", uploadError);
+          throw uploadError;
+        }
+
+        // Obtener URL pública
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("blueprints").getPublicUrl(filePath);
+
+        fileUrl = publicUrl;
+        fileName = file.name;
       } else {
-        // Modo existente: descargar el PDF del blueprint
+        // Modo existente: usar blueprint ya subido
         const selectedBlueprint = blueprints.find(
           (b: Blueprint) => b.id === data.selectedBlueprintId
         );
@@ -130,19 +172,17 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
           throw new Error("Blueprint not found");
         }
 
-        const pdfResponse = await fetch(selectedBlueprint.fileUrl);
-        const pdfBlob = await pdfResponse.blob();
-        fileToAnalyze = new File([pdfBlob], selectedBlueprint.fileName, {
-          type: "application/pdf",
-        });
+        fileUrl = selectedBlueprint.fileUrl;
+        fileName = selectedBlueprint.fileName;
       }
 
       // Esperar a que termine la simulación de progreso
       await progressPromise;
 
-      // Ejecutar la mutation
+      // Ejecutar la mutation solo con la URL
       await analyzeBlueprintMutation.mutateAsync({
-        file: fileToAnalyze,
+        fileUrl,
+        fileName,
         prompt: data.prompt,
         category: data.category || "General",
         blueprintId: blueprintIdToUse || undefined,

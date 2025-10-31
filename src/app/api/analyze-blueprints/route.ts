@@ -10,23 +10,35 @@ export async function POST(req: NextRequest) {
   try {
     console.log("[ANALYZE_BLUEPRINT] Iniciando análisis...");
 
-    const formData = await req.formData();
-    const file = formData.get("file") as File;
-    const prompt = formData.get("prompt") as string;
-    const category = formData.get("category") as string;
+    const body = await req.json();
+    const { fileUrl, fileName, prompt, category } = body;
 
     console.log("[ANALYZE_BLUEPRINT] Datos recibidos:", {
-      fileName: file?.name,
-      fileSize: `${(file?.size / 1024 / 1024).toFixed(2)} MB`,
+      fileName,
+      fileUrl: fileUrl ? "Provided" : "Missing",
       category,
     });
 
-    if (!file || !prompt) {
+    if (!fileUrl || !fileName || !prompt) {
       return NextResponse.json(
-        { error: "Archivo y prompt son requeridos." },
+        { error: "fileUrl, fileName y prompt son requeridos." },
         { status: 400 }
       );
     }
+
+    // Descargar el archivo desde Supabase Storage
+    console.log("[ANALYZE_BLUEPRINT] Descargando archivo desde Supabase...");
+    const response = await fetch(fileUrl);
+    if (!response.ok) {
+      throw new Error("Failed to download file from Supabase Storage");
+    }
+    const blob = await response.blob();
+    const fileToUpload = new File([blob], fileName, {
+      type: "application/pdf",
+    });
+    console.log("[ANALYZE_BLUEPRINT] Archivo descargado:", {
+      size: `${(fileToUpload.size / 1024 / 1024).toFixed(2)} MB`,
+    });
 
     const finalCategory = category || "General";
 
@@ -46,8 +58,11 @@ export async function POST(req: NextRequest) {
         .order("category", { ascending: true });
 
       if (equipment && equipment.length > 0) {
-        equipmentContext = `\n\n## INVENTORY DATA (DO NOT MODIFY)\n\n\`\`\`json\n${JSON.stringify(equipment, null, 2)}\n\`\`\`\n`;
-
+        equipmentContext = `\n\n## INVENTORY DATA (DO NOT MODIFY)\n\n\`\`\`json\n${JSON.stringify(
+          equipment,
+          null,
+          2
+        )}\n\`\`\`\n`;
 
         interface EquipmentItem {
           name: string;
@@ -100,15 +115,15 @@ export async function POST(req: NextRequest) {
 
     // Subir PDF a OpenAI
     console.log("[ANALYZE_BLUEPRINT] Subiendo PDF a OpenAI...");
-    const arrayBuffer = await file.arrayBuffer();
+    const arrayBuffer = await fileToUpload.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    const fileToUpload = new File([buffer], file.name, {
+    const fileForOpenAI = new File([buffer], fileToUpload.name, {
       type: "application/pdf",
     });
 
     const uploadedFile = await openai.files.create({
-      file: fileToUpload,
+      file: fileForOpenAI,
       purpose: "assistants",
     });
 
@@ -142,25 +157,27 @@ You must ALWAYS respond using these EXACT section headers and this structure (ca
 
 ### ## TAKEOFF
 
-- Identify and summarize all key construction components detected in the blueprint for the selected category.
-- Group them logically by system or location (e.g., *Toilet Rooms, Electrical Rooms, Roof Level, etc.*).
-- For each detected item, show measured or estimated **quantities**, **specifications**, and **units**.
-- When possible, match detected elements to **equipment or materials available in the inventory**.
-- Use a table to calculate costs and totals using inventory pricing.
-
-Example:
+**CRITICAL: You MUST include a cost table in this section using EXACTLY this format:**
 
 | Item | Unit | Quantity | Unit Cost | Total Cost |
 |------|------|-----------|-----------|------------|
-| Generator 7500W (EQ‑070) | each | 1 | $2,200 | $2,200 |
-| Air Compressor (EQ‑045) | each | 2 | $850 | $1,700 |
+| Main Service Panel | each | 1 | $5,000 | $5,000 |
+| Distribution Panel | each | 3 | $1,200 | $3,600 |
 
-**Total Cost for Available Items:** $3,900  
-**Additional Items Needed:** [List missing components not covered by inventory]
+**Rules for the table:**
+1. The table MUST have exactly 5 columns: Item, Unit, Quantity, Unit Cost, Total Cost
+2. Each row MUST represent a specific material or equipment item
+3. Use items from the provided inventory when possible
+4. Include at least 3-5 items in the table
+5. Calculate Total Cost = Quantity × Unit Cost
+6. After the table, include: **Total Cost for Available Items:** $X,XXX
 
-> Notes:
-> - Use only items that exist in the provided inventory.
-> - If no matching inventory item exists, list it under "Additional Items Needed" without cost.
+**Before the table, provide:**
+- Brief summary of detected components grouped by location or system
+- Quantities and specifications for major elements
+
+**After the table, list:**
+- **Additional Items Needed:** Items not in inventory that need to be procured
 
 ---
 
