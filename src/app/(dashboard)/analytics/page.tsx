@@ -1,4 +1,4 @@
-import { AnalyticsComponent } from "@/components/sectionComponents/AnalyticsComponent";
+import { AnalyticsComponent } from "@/components/sectionComponents/analytics";
 
 export default function AnalyticsPage() {
   return <AnalyticsComponent />;

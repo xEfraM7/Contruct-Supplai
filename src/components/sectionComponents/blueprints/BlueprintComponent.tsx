@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useForm } from "react-hook-form";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,489 +19,137 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Badge } from "../ui/badge";
+import { Badge } from "../../ui/badge";
 import { cn } from "@/lib/utils";
 import { themeColors } from "@/lib/theme";
 
-const menuItems = ["Jobs", "Discrepancies", "RFIs", "Blueprints"];
-
-const jobCategories = [
-  "Electrical",
-  "Concrete",
-  "Roofing",
-  "Steel",
-  "Plumbing",
-  "Framing",
-  "Flooring",
-  "Glazing",
-  "HVAC",
-  "Drywall",
-  "Masonry",
-  "Doors and Windows",
-];
-
-interface ExtractedItem {
-  itemId: string;
-  csiCode: string;
-  description: string;
-  quantity: number;
-  unit: string;
-  unitCost: number;
-  total: number;
-  confidence: number;
-  source: string;
-}
-
-interface AnalysisResult {
-  requested: string;
-  discrepancies: string;
-  rfis: string;
-  extractedItems?: ExtractedItem[];
-  discrepancyCount?: number;
-  totalCostAvailable?: number;
-  totalCostNeeded?: number;
-  availableItemsCount?: number;
-  neededItemsCount?: number;
-}
-
-interface BlueprintComponentProps {
-  projectId: string;
-}
+// Import separated modules
+import {
+  menuItems,
+  jobCategories,
+  categoryPrompts,
+  progressSteps,
+  type BlueprintComponentProps,
+  type BlueprintFormData,
+  type AnalysisResult,
+  type Blueprint,
+  type Analysis,
+  parseAnalysisResult,
+  simulateProgress,
+  useProject,
+  useBlueprints,
+  useAnalyses,
+  useAnalyzeBlueprint,
+} from "./index";
 
 export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
   const [activeMenu, setActiveMenu] = useState("Jobs");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [prompt, setPrompt] = useState("");
-  const [file, setFile] = useState<File | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(
     null
   );
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [projectName, setProjectName] = useState<string>("");
   const [progressStep, setProgressStep] = useState(0);
   const [showProgressModal, setShowProgressModal] = useState(false);
-  const [blueprints, setBlueprints] = useState<
-    Array<{
-      id: string;
-      fileName: string;
-      fileUrl: string;
-      fileSize: number;
-      category: string;
-      createdAt: string;
-    }>
-  >([]);
-  const [loadingBlueprints, setLoadingBlueprints] = useState(true);
-  const [uploadMode, setUploadMode] = useState<"new" | "existing">("new");
-  const [selectedBlueprintId, setSelectedBlueprintId] = useState<string | null>(
-    null
-  );
   const [selectedBlueprintForView, setSelectedBlueprintForView] = useState<
     string | null
   >(null);
-  const [analyses, setAnalyses] = useState<
-    Array<{
-      id: string;
-      blueprintId: string;
-      category: string;
-      prompt: string;
-      result: string;
-      createdAt: string;
-    }>
-  >([]);
-  const [loadingAnalyses, setLoadingAnalyses] = useState(false);
 
-  const progressSteps = [
-    { label: "Uploading blueprint...", duration: 1000 },
-    { label: "Processing document...", duration: 2000 },
-    { label: "Analyzing construction elements...", duration: 3000 },
-    { label: "Detecting discrepancies...", duration: 2000 },
-    { label: "Generating RFIs...", duration: 2000 },
-    { label: "Finalizing analysis...", duration: 1000 },
-  ];
-
-  // Obtener información del proyecto y blueprints
-  useState(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch project info
-        const projectResponse = await fetch(`/api/projects/${projectId}`);
-        if (projectResponse.ok) {
-          const projectData = await projectResponse.json();
-          setProjectName(projectData.project.name);
-        }
-
-        // Fetch blueprints
-        const blueprintsResponse = await fetch(
-          `/api/blueprints?project_id=${projectId}`
-        );
-        if (blueprintsResponse.ok) {
-          const blueprintsData = await blueprintsResponse.json();
-          setBlueprints(blueprintsData.blueprints || []);
-        }
-      } catch (err) {
-        console.error("Error fetching data:", err);
-      } finally {
-        setLoadingBlueprints(false);
-      }
-    };
-    fetchData();
+  // React Hook Form
+  const {
+    register,
+    handleSubmit: handleFormSubmit,
+    watch,
+    setValue,
+    reset,
+    formState: { errors },
+  } = useForm<BlueprintFormData>({
+    defaultValues: {
+      category: "",
+      prompt: "",
+      file: null,
+      uploadMode: "new",
+      selectedBlueprintId: null,
+    },
   });
 
-  const parseAnalysisResult = (text: string): AnalysisResult => {
-    console.log("[PARSE] Texto completo recibido:", text);
-    
-    // Buscar secciones con headers exactos (sin números)
-    const requestedMatch = text.match(
-      /##\s*TAKEOFF\s*([\s\S]*?)(?=##\s*(?:DISCREPANCIES|RFIs)|$)/i
-    );
+  // Watch form values
+  const selectedCategory = watch("category");
+  const uploadMode = watch("uploadMode");
+  const selectedBlueprintId = watch("selectedBlueprintId");
+  const fileList = watch("file");
 
-    const discrepanciesMatch = text.match(
-      /##\s*DISCREPANCIES\s*([\s\S]*?)(?=##\s*RFIs|$)/i
-    );
-    const rfisMatch = text.match(/##\s*RFIs\s*([\s\S]*?)$/i);
+  // Use custom hooks
+  const { data: projectData } = useProject(projectId);
+  const {
+    data: blueprintsData,
+    isLoading: loadingBlueprints,
+    error: blueprintsError,
+  } = useBlueprints(projectId);
+  const { data: analysesData, isLoading: loadingAnalyses } = useAnalyses(
+    selectedBlueprintForView
+  );
 
-    // Extract items from summary table if exists
-    const extractedItems: ExtractedItem[] = [];
-    const requestedText = requestedMatch?.[1] || "";
+  const blueprints = blueprintsData?.blueprints || [];
+  const analyses = analysesData?.analyses || [];
+  const projectName = projectData?.project?.name || "";
 
-    // Find all locations mentioned in the text
-    // Look for patterns like "- **Toilet Rooms**: 1 unit required"
-    const locationMatches = Array.from(
-      requestedText.matchAll(/[-•*]\s*\*\*([^*:]+)\*\*:\s*(\d+)\s*unit/gi)
-    );
-    const locations = locationMatches.map((m) => ({
-      name: m[1].trim(),
-      quantity: parseInt(m[2]),
-    }));
+  // Mutation for analyzing blueprints
+  const analyzeBlueprintMutation = useAnalyzeBlueprint(projectId, (result) => {
+    console.log("[COMPONENT] Received result from API:", result);
+    const parsed = parseAnalysisResult(result);
+    console.log("[COMPONENT] Parsed result:", parsed);
+    setAnalysisResult(parsed);
+    setActiveMenu("Jobs");
+    setTimeout(() => {
+      setShowProgressModal(false);
+    }, 500);
+  });
 
-    // If no specific pattern found, look for room mentions in summary
-    if (locations.length === 0) {
-      const summaryMatches = Array.from(
-        requestedText.matchAll(/[-•*]\s*\*\*([^*:]+)\*\*:/gi)
-      );
-      summaryMatches.forEach((m) => {
-        locations.push({
-          name: m[1].trim(),
-          quantity: 1,
-        });
-      });
-    }
-
-    // Buscar tabla en formato estándar (Item | Unit Cost | Quantity | Total Cost)
-    const tableMatch = requestedText.match(
-      /\|\s*Item\s*\|\s*Unit Cost\s*\|\s*Quantity\s*\|\s*Total Cost\s*\|([\s\S]*?)(?=\n\n|\*\*Total Cost for|$)/i
-    );
-    
-    console.log("[PARSE] Tabla encontrada:", !!tableMatch);
-    if (tableMatch) {
-      console.log("[PARSE] Contenido de tabla:", tableMatch[1]);
-    }
-
-    if (tableMatch) {
-      const rows = tableMatch[1]
-        .split("\n")
-        .filter(
-          (row) => row.trim() && !row.includes("---") && !row.includes("|--")
-        );
-      rows.forEach((row, rowIndex) => {
-        const cells = row
-          .split("|")
-          .map((cell) => cell.trim())
-          .filter(Boolean);
-        
-        // Formato estándar: Item | Unit Cost | Quantity | Total Cost
-        if (cells.length >= 4) {
-          // Extraer nombre y tag del equipo: "Equipment Name (TAG)"
-          const itemMatch = cells[0]?.match(/(.+?)\s*\(([^)]+)\)/);
-          const equipmentName = itemMatch?.[1]?.trim() || cells[0];
-          const equipmentTag = itemMatch?.[2]?.trim() || "";
-          
-          // Extraer costo unitario
-          const unitCostMatch = cells[1]?.match(/\$?\s*([0-9,]+(?:\.[0-9]{2})?)/);
-          const cost = parseFloat(unitCostMatch?.[1]?.replace(/,/g, "") || "0");
-          
-          // Extraer cantidad
-          const quantity = parseInt(cells[2]) || 1;
-          
-          // Determinar confidence: 92% si está en inventario, 85% si no
-          const confidence = equipmentTag ? 92 : 85;
-
-          // Create individual items for each location
-          if (locations.length > 0) {
-            locations.forEach((location, locIndex) => {
-              // Generate unique ID combining row index and location index
-              const uniqueId = equipmentTag
-                ? `${equipmentTag}-${rowIndex}-${locIndex}`
-                : `ITEM-${String(rowIndex * 100 + locIndex + 1).padStart(3, "0")}`;
-
-              extractedItems.push({
-                itemId: uniqueId,
-                csiCode: "",
-                description: equipmentName,
-                quantity: location.quantity,
-                unit: "EA",
-                unitCost: cost,
-                total: cost * location.quantity,
-                confidence,
-                source: location.name,
-              });
-            });
-          } else {
-            // Fallback: create single item
-            extractedItems.push({
-              itemId: equipmentTag || `ITEM-${String(rowIndex + 1).padStart(3, "0")}`,
-              csiCode: "",
-              description: equipmentName,
-              quantity,
-              unit: "EA",
-              unitCost: cost,
-              total: cost * quantity,
-              confidence,
-              source: "Blueprint",
-            });
-          }
-        }
-      });
-    }
-
-    // Extract total costs from AI response
-    let totalCostAvailable = 0;
-    let totalCostNeeded = 0;
-    let availableItemsCount = 0;
-    let neededItemsCount = 0;
-
-    // Look for "Total Cost for Available" pattern
-    const totalCostMatch = requestedText.match(
-      /Total Cost for Available:\s*(\d+)\s*x\s*\$(\d+(?:,\d{3})*(?:\.\d{2})?)\s*=\s*\$(\d+(?:,\d{3})*(?:\.\d{2})?)/i
-    );
-    if (totalCostMatch) {
-      availableItemsCount = parseInt(totalCostMatch[1]);
-      totalCostAvailable = parseFloat(totalCostMatch[3].replace(/,/g, ""));
-    }
-
-    // Calculate needed items from extractedItems
-    if (extractedItems.length > 0) {
-      neededItemsCount = extractedItems.filter(
-        (item) => item.confidence < 90
-      ).length;
-      totalCostNeeded = extractedItems
-        .filter((item) => item.confidence < 90)
-        .reduce((sum, item) => sum + item.total, 0);
-
-      // If we didn't find the total from text, calculate from available items
-      if (totalCostAvailable === 0) {
-        availableItemsCount = extractedItems.filter(
-          (item) => item.confidence >= 90
-        ).length;
-        totalCostAvailable = extractedItems
-          .filter((item) => item.confidence >= 90)
-          .reduce((sum, item) => sum + item.total, 0);
-      }
-    }
-
-    // Count discrepancies
-    const discrepancyText = discrepanciesMatch?.[1]?.trim() || "";
-
-    // Check if AI explicitly says there are no discrepancies
-    const noDiscrepanciesPatterns = [
-      /no discrepancies/i,
-      /there are no discrepancies/i,
-      /no conflicts/i,
-      /no issues/i,
-      /no problems/i,
-      /everything matches/i,
-      /all requirements are met/i,
-      /blueprint matches/i,
-      /inventory matches/i,
-    ];
-
-    const hasNoDiscrepancies = noDiscrepanciesPatterns.some((pattern) =>
-      pattern.test(discrepancyText)
-    );
-
-    // Only count actual discrepancy items if AI doesn't explicitly say there are none
-    const discrepancyCount = hasNoDiscrepancies
-      ? 0
-      : discrepancyText
-          .split("\n")
-          .filter(
-            (line) =>
-              line.trim().match(/^[-•*]\s/) || line.trim().match(/^\d+\./)
-          ).length;
-
-    // Usar solo la sección TAKEOFF para "requested"
-    const requestedContent = requestedMatch?.[1]?.trim() || "Not available";
-
-    console.log("[PARSE] Items extraídos:", extractedItems.length);
-    console.log("[PARSE] Discrepancy count:", discrepancyCount);
-    console.log("[PARSE] Total cost available:", totalCostAvailable);
-    console.log("[PARSE] Total cost needed:", totalCostNeeded);
-
-    return {
-      requested: requestedContent,
-      discrepancies: discrepancyText || "No discrepancies detected",
-      rfis: rfisMatch?.[1]?.trim() || "No RFIs required",
-      extractedItems: extractedItems.length > 0 ? extractedItems : undefined,
-      discrepancyCount: discrepancyCount > 0 ? discrepancyCount : undefined,
-      totalCostAvailable:
-        totalCostAvailable > 0 ? totalCostAvailable : undefined,
-      totalCostNeeded: totalCostNeeded > 0 ? totalCostNeeded : undefined,
-      availableItemsCount:
-        availableItemsCount > 0 ? availableItemsCount : undefined,
-      neededItemsCount: neededItemsCount > 0 ? neededItemsCount : undefined,
-    };
-  };
-
-  const simulateProgress = async () => {
-    for (let i = 0; i < progressSteps.length; i++) {
-      setProgressStep(i);
-      await new Promise((resolve) =>
-        setTimeout(resolve, progressSteps[i].duration)
-      );
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (uploadMode === "new" && (!file || !prompt)) {
-      alert("Please upload a file and describe what you want to analyze.");
-      return;
-    }
-
-    if (uploadMode === "existing" && (!selectedBlueprintId || !prompt)) {
-      alert("Please select a blueprint and describe what you want to analyze.");
-      return;
-    }
-
-    setLoading(true);
+  const onSubmit = async (data: BlueprintFormData) => {
     setAnalysisResult(null);
-    setError(null);
     setShowProgressModal(true);
     setProgressStep(0);
 
     try {
       // Iniciar simulación de progreso
-      const progressPromise = simulateProgress();
+      const progressPromise = simulateProgress(progressSteps, setProgressStep);
 
-      let res;
+      let fileToAnalyze: File;
+      const blueprintIdToUse = data.selectedBlueprintId;
 
-      if (uploadMode === "new") {
-        // Modo nuevo: subir archivo
-        const formData = new FormData();
-        formData.append("file", file!);
-        formData.append("category", selectedCategory || "General");
-        formData.append("prompt", prompt);
-
-        res = await fetch("/api/analyze-blueprints", {
-          method: "POST",
-          body: formData,
-        });
+      if (data.uploadMode === "new") {
+        if (!data.file || data.file.length === 0) {
+          throw new Error("Please upload a file");
+        }
+        fileToAnalyze = data.file[0];
       } else {
-        // Modo existente: usar blueprint ya subido
+        // Modo existente: descargar el PDF del blueprint
         const selectedBlueprint = blueprints.find(
-          (b) => b.id === selectedBlueprintId
+          (b: Blueprint) => b.id === data.selectedBlueprintId
         );
         if (!selectedBlueprint) {
           throw new Error("Blueprint not found");
         }
 
-        // Descargar el PDF del blueprint existente
         const pdfResponse = await fetch(selectedBlueprint.fileUrl);
         const pdfBlob = await pdfResponse.blob();
-        const pdfFile = new File([pdfBlob], selectedBlueprint.fileName, {
+        fileToAnalyze = new File([pdfBlob], selectedBlueprint.fileName, {
           type: "application/pdf",
-        });
-
-        const formData = new FormData();
-        formData.append("file", pdfFile);
-        formData.append(
-          "category",
-          selectedCategory || selectedBlueprint.category || "General"
-        );
-        formData.append("prompt", prompt);
-
-        res = await fetch("/api/analyze-blueprints", {
-          method: "POST",
-          body: formData,
         });
       }
 
       // Esperar a que termine la simulación de progreso
       await progressPromise;
 
-      // Verificar si la respuesta es JSON válido
-      const contentType = res.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        const text = await res.text();
-        console.error("Non-JSON response:", text);
-        throw new Error(
-          `Server returned non-JSON response (${res.status}): ${text.substring(0, 200)}`
-        );
-      }
-
-      const json = await res.json();
-
-      if (!res.ok) {
-        throw new Error(json.error || "Unexpected error");
-      }
-
-      const parsed = parseAnalysisResult(json.result);
-      setAnalysisResult(parsed);
-      setActiveMenu("Jobs");
-
-      // Determinar el blueprint_id
-      let blueprintId = selectedBlueprintId;
-
-      // Guardar blueprint en Supabase solo si es modo "new"
-      if (uploadMode === "new" && file) {
-        const blueprintFormData = new FormData();
-        blueprintFormData.append("file", file);
-        blueprintFormData.append("project_id", projectId);
-        blueprintFormData.append("category", selectedCategory || "General");
-
-        const blueprintResponse = await fetch("/api/blueprints", {
-          method: "POST",
-          body: blueprintFormData,
-        });
-
-        if (blueprintResponse.ok) {
-          const blueprintData = await blueprintResponse.json();
-          blueprintId = blueprintData.blueprint.id;
-        }
-      }
-
-      // Guardar el análisis
-      if (blueprintId) {
-        await fetch("/api/blueprint-analyses", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            blueprint_id: blueprintId,
-            category: selectedCategory || "General",
-            prompt,
-            result: json.result,
-          }),
-        });
-      }
-
-      // Recargar lista de blueprints
-      const blueprintsResponse = await fetch(
-        `/api/blueprints?project_id=${projectId}`
-      );
-      if (blueprintsResponse.ok) {
-        const blueprintsData = await blueprintsResponse.json();
-        setBlueprints(blueprintsData.blueprints || []);
-      }
-
-      // Cerrar modal después de un breve delay
-      setTimeout(() => {
-        setShowProgressModal(false);
-      }, 500);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      // Ejecutar la mutation
+      await analyzeBlueprintMutation.mutateAsync({
+        file: fileToAnalyze,
+        prompt: data.prompt,
+        category: data.category || "General",
+        blueprintId: blueprintIdToUse || undefined,
+        uploadMode: data.uploadMode,
+      });
+    } catch {
       setShowProgressModal(false);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -548,7 +197,11 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                   {jobCategories.map((category) => (
                     <button
                       key={category}
-                      onClick={() => setSelectedCategory(category)}
+                      type="button"
+                      onClick={() => {
+                        setValue("category", category);
+                        setValue("prompt", categoryPrompts[category] || "");
+                      }}
                       className={`p-3 sm:p-4 rounded-lg border transition-all ${
                         selectedCategory === category
                           ? "bg-primary border-primary text-primary-foreground"
@@ -571,10 +224,14 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                 <Textarea
                   rows={4}
                   placeholder="E.g.: Find all electrical points and discrepancies in the HVAC distribution"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
+                  {...register("prompt", { required: "Prompt is required" })}
                   className="w-full"
                 />
+                {errors.prompt && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {errors.prompt.message}
+                  </p>
+                )}
               </div>
 
               {/* Blueprint Selection */}
@@ -589,8 +246,8 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                     type="button"
                     variant={uploadMode === "new" ? "default" : "outline"}
                     onClick={() => {
-                      setUploadMode("new");
-                      setSelectedBlueprintId(null);
+                      setValue("uploadMode", "new");
+                      setValue("selectedBlueprintId", null);
                     }}
                     className="flex-1"
                   >
@@ -600,8 +257,8 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                     type="button"
                     variant={uploadMode === "existing" ? "default" : "outline"}
                     onClick={() => {
-                      setUploadMode("existing");
-                      setFile(null);
+                      setValue("uploadMode", "existing");
+                      setValue("file", null);
                     }}
                     className="flex-1"
                     disabled={blueprints.length === 0}
@@ -617,7 +274,10 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                       type="file"
                       accept=".pdf"
                       id="blueprint-upload"
-                      onChange={(e) => setFile(e.target.files?.[0] || null)}
+                      {...register("file", {
+                        required:
+                          uploadMode === "new" ? "File is required" : false,
+                      })}
                       className="hidden"
                     />
                     <label
@@ -626,23 +286,32 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                     >
                       <Upload className="w-10 h-10 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
                       <p className="text-sm font-medium text-card-foreground">
-                        {file ? file.name : "Click to upload or drag and drop"}
+                        {fileList && fileList.length > 0
+                          ? fileList[0].name
+                          : "Click to upload or drag and drop"}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         PDF files up to 150MB
                       </p>
                     </label>
+                    {errors.file && (
+                      <p className="text-sm text-red-500 mt-1">
+                        {errors.file.message}
+                      </p>
+                    )}
                   </div>
                 )}
 
                 {/* Select Existing */}
                 {uploadMode === "existing" && (
                   <div className="space-y-2 max-h-64 overflow-y-auto border border-border rounded-lg p-2">
-                    {blueprints.map((blueprint) => (
+                    {blueprints.map((blueprint: Blueprint) => (
                       <button
                         key={blueprint.id}
                         type="button"
-                        onClick={() => setSelectedBlueprintId(blueprint.id)}
+                        onClick={() =>
+                          setValue("selectedBlueprintId", blueprint.id)
+                        }
                         className={`w-full p-3 rounded-lg text-left transition-colors ${
                           selectedBlueprintId === blueprint.id
                             ? "bg-primary text-primary-foreground"
@@ -671,11 +340,10 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
               {/* Actions */}
               <div className="flex items-center justify-end gap-3 pt-2">
                 <Button
+                  type="button"
                   variant="outline"
                   onClick={() => {
-                    setSelectedCategory(null);
-                    setPrompt("");
-                    setFile(null);
+                    reset();
                     setAnalysisResult(null);
                   }}
                   className="border-border text-muted-foreground hover:bg-muted"
@@ -683,21 +351,35 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                   Cancel
                 </Button>
                 <Button
-                  onClick={handleSubmit}
+                  type="submit"
+                  onClick={handleFormSubmit(onSubmit)}
                   className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  disabled={loading}
+                  disabled={analyzeBlueprintMutation.isPending}
                 >
-                  {loading ? "Analyzing..." : "Submit"}
+                  {analyzeBlueprintMutation.isPending
+                    ? "Analyzing..."
+                    : "Submit"}
                 </Button>
               </div>
 
               {/* Error */}
-              {error && (
+              {analyzeBlueprintMutation.error && (
                 <div
                   className={`mt-6 p-4 rounded text-sm border ${themeColors.status.error.bg} ${themeColors.status.error.text} ${themeColors.status.error.border}`}
                 >
                   <h4 className="text-md font-semibold mb-2">Error:</h4>
-                  {error}
+                  {analyzeBlueprintMutation.error.message}
+                </div>
+              )}
+
+              {blueprintsError && (
+                <div
+                  className={`mt-6 p-4 rounded text-sm border ${themeColors.status.error.bg} ${themeColors.status.error.text} ${themeColors.status.error.border}`}
+                >
+                  <h4 className="text-md font-semibold mb-2">
+                    Error loading blueprints:
+                  </h4>
+                  {blueprintsError.message}
                 </div>
               )}
 
@@ -741,10 +423,8 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                                   const csv = [
                                     [
                                       "ITEM ID",
-                                      "CSI CODE",
                                       "DESCRIPTION",
                                       "QTY",
-                                      "UNIT",
                                       "UNIT COST",
                                       "TOTAL",
                                       "CONFIDENCE",
@@ -820,23 +500,17 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                           </CardHeader>
                           <CardContent>
                             <div className="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0">
-                              <table className="w-full min-w-[900px]">
+                              <table className="w-full min-w-[700px]">
                                 <thead>
                                   <tr className="border-b border-border">
                                     <th className="text-left py-3 px-2 sm:px-4 text-xs font-semibold text-muted-foreground uppercase">
                                       Item ID
                                     </th>
                                     <th className="text-left py-3 px-2 sm:px-4 text-xs font-semibold text-muted-foreground uppercase">
-                                      CSI Code
-                                    </th>
-                                    <th className="text-left py-3 px-2 sm:px-4 text-xs font-semibold text-muted-foreground uppercase">
                                       Description
                                     </th>
                                     <th className="text-right py-3 px-2 sm:px-4 text-xs font-semibold text-muted-foreground uppercase">
                                       QTY
-                                    </th>
-                                    <th className="text-left py-3 px-2 sm:px-4 text-xs font-semibold text-muted-foreground uppercase">
-                                      Unit
                                     </th>
                                     <th className="text-right py-3 px-2 sm:px-4 text-xs font-semibold text-muted-foreground uppercase">
                                       Unit Cost
@@ -865,22 +539,12 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                                       </td>
                                       <td className="py-3 px-2 sm:px-4">
                                         <span className="text-sm text-card-foreground">
-                                          {item.csiCode}
-                                        </span>
-                                      </td>
-                                      <td className="py-3 px-2 sm:px-4">
-                                        <span className="text-sm text-card-foreground">
                                           {item.description}
                                         </span>
                                       </td>
                                       <td className="py-3 px-2 sm:px-4 text-right">
                                         <span className="text-sm text-card-foreground">
                                           {item.quantity.toFixed(2)}
-                                        </span>
-                                      </td>
-                                      <td className="py-3 px-2 sm:px-4">
-                                        <span className="text-sm text-card-foreground">
-                                          {item.unit}
                                         </span>
                                       </td>
                                       <td className="py-3 px-2 sm:px-4 text-right">
@@ -1145,26 +809,12 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                     <h3 className="text-sm font-semibold text-card-foreground mb-3">
                       Uploaded Blueprints
                     </h3>
-                    {blueprints.map((blueprint) => (
+                    {blueprints.map((blueprint: Blueprint) => (
                       <button
                         key={blueprint.id}
                         type="button"
-                        onClick={async () => {
+                        onClick={() => {
                           setSelectedBlueprintForView(blueprint.id);
-                          setLoadingAnalyses(true);
-                          try {
-                            const response = await fetch(
-                              `/api/blueprint-analyses?blueprint_id=${blueprint.id}`
-                            );
-                            if (response.ok) {
-                              const data = await response.json();
-                              setAnalyses(data.analyses || []);
-                            }
-                          } catch (err) {
-                            console.error("Error loading analyses:", err);
-                          } finally {
-                            setLoadingAnalyses(false);
-                          }
                         }}
                         className={`w-full p-3 rounded-lg text-left transition-colors ${
                           selectedBlueprintForView === blueprint.id
@@ -1215,7 +865,7 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                         <h3 className="text-sm font-semibold text-card-foreground mb-3">
                           Analyses ({analyses.length})
                         </h3>
-                        {analyses.map((analysis) => (
+                        {analyses.map((analysis: Analysis) => (
                           <div
                             key={analysis.id}
                             className="p-4 border rounded-lg bg-muted/30"
