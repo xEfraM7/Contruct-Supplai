@@ -59,19 +59,30 @@ export const useAnalyzeBlueprint = (
   return useMutation({
     mutationFn: async ({
       file,
+      fileUrl,
+      fileName,
       prompt,
       category,
       blueprintId,
       uploadMode,
     }: {
-      file: File;
+      file?: File;
+      fileUrl?: string;
+      fileName?: string;
       prompt: string;
       category: string;
       blueprintId?: string;
       uploadMode: "new" | "existing";
     }) => {
       const formData = new FormData();
-      formData.append("file", file);
+      
+      if (file) {
+        formData.append("file", file);
+      } else if (fileUrl && fileName) {
+        formData.append("fileUrl", fileUrl);
+        formData.append("fileName", fileName);
+      }
+      
       formData.append("category", category);
       formData.append("prompt", prompt);
 

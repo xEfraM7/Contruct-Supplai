@@ -11,21 +11,45 @@ export async function POST(req: NextRequest) {
     console.log("[ANALYZE_BLUEPRINT] Iniciando análisis...");
 
     const formData = await req.formData();
-    const file = formData.get("file") as File;
+    const file = formData.get("file") as File | null;
+    const fileUrl = formData.get("fileUrl") as string | null;
+    const fileName = formData.get("fileName") as string | null;
     const prompt = formData.get("prompt") as string;
     const category = formData.get("category") as string;
 
     console.log("[ANALYZE_BLUEPRINT] Datos recibidos:", {
-      fileName: file?.name,
-      fileSize: `${(file?.size / 1024 / 1024).toFixed(2)} MB`,
+      fileName: file?.name || fileName,
+      fileSize: file
+        ? `${(file.size / 1024 / 1024).toFixed(2)} MB`
+        : "From URL",
       category,
+      hasFileUrl: !!fileUrl,
     });
 
-    if (!file || !prompt) {
+    if ((!file && !fileUrl) || !prompt) {
       return NextResponse.json(
-        { error: "Archivo y prompt son requeridos." },
+        { error: "Archivo (o URL) y prompt son requeridos." },
         { status: 400 }
       );
+    }
+
+    // Si tenemos una URL, descargar el archivo
+    let fileToUpload: File;
+    if (fileUrl && fileName) {
+      console.log("[ANALYZE_BLUEPRINT] Descargando archivo desde URL...");
+      const response = await fetch(fileUrl);
+      if (!response.ok) {
+        throw new Error("Failed to download file from URL");
+      }
+      const blob = await response.blob();
+      fileToUpload = new File([blob], fileName, { type: "application/pdf" });
+      console.log("[ANALYZE_BLUEPRINT] Archivo descargado:", {
+        size: `${(fileToUpload.size / 1024 / 1024).toFixed(2)} MB`,
+      });
+    } else if (file) {
+      fileToUpload = file;
+    } else {
+      throw new Error("No file or fileUrl provided");
     }
 
     const finalCategory = category || "General";
@@ -46,8 +70,11 @@ export async function POST(req: NextRequest) {
         .order("category", { ascending: true });
 
       if (equipment && equipment.length > 0) {
-        equipmentContext = `\n\n## INVENTORY DATA (DO NOT MODIFY)\n\n\`\`\`json\n${JSON.stringify(equipment, null, 2)}\n\`\`\`\n`;
-
+        equipmentContext = `\n\n## INVENTORY DATA (DO NOT MODIFY)\n\n\`\`\`json\n${JSON.stringify(
+          equipment,
+          null,
+          2
+        )}\n\`\`\`\n`;
 
         interface EquipmentItem {
           name: string;
@@ -100,15 +127,15 @@ export async function POST(req: NextRequest) {
 
     // Subir PDF a OpenAI
     console.log("[ANALYZE_BLUEPRINT] Subiendo PDF a OpenAI...");
-    const arrayBuffer = await file.arrayBuffer();
+    const arrayBuffer = await fileToUpload.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    const fileToUpload = new File([buffer], file.name, {
+    const fileForOpenAI = new File([buffer], fileToUpload.name, {
       type: "application/pdf",
     });
 
     const uploadedFile = await openai.files.create({
-      file: fileToUpload,
+      file: fileForOpenAI,
       purpose: "assistants",
     });
 

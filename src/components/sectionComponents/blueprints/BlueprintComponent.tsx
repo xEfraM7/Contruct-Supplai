@@ -113,16 +113,30 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
       // Iniciar simulación de progreso
       const progressPromise = simulateProgress(progressSteps, setProgressStep);
 
-      let fileToAnalyze: File;
       const blueprintIdToUse = data.selectedBlueprintId;
+      let mutationData: {
+        file?: File;
+        fileUrl?: string;
+        fileName?: string;
+        prompt: string;
+        category: string;
+        blueprintId?: string;
+        uploadMode: "new" | "existing";
+      };
 
       if (data.uploadMode === "new") {
         if (!data.file || data.file.length === 0) {
           throw new Error("Please upload a file");
         }
-        fileToAnalyze = data.file[0];
+        mutationData = {
+          file: data.file[0],
+          prompt: data.prompt,
+          category: data.category || "General",
+          blueprintId: blueprintIdToUse || undefined,
+          uploadMode: data.uploadMode,
+        };
       } else {
-        // Modo existente: descargar el PDF del blueprint
+        // Modo existente: enviar URL en lugar de descargar el archivo
         const selectedBlueprint = blueprints.find(
           (b: Blueprint) => b.id === data.selectedBlueprintId
         );
@@ -130,24 +144,21 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
           throw new Error("Blueprint not found");
         }
 
-        const pdfResponse = await fetch(selectedBlueprint.fileUrl);
-        const pdfBlob = await pdfResponse.blob();
-        fileToAnalyze = new File([pdfBlob], selectedBlueprint.fileName, {
-          type: "application/pdf",
-        });
+        mutationData = {
+          fileUrl: selectedBlueprint.fileUrl,
+          fileName: selectedBlueprint.fileName,
+          prompt: data.prompt,
+          category: data.category || "General",
+          blueprintId: blueprintIdToUse || undefined,
+          uploadMode: data.uploadMode,
+        };
       }
 
       // Esperar a que termine la simulación de progreso
       await progressPromise;
 
       // Ejecutar la mutation
-      await analyzeBlueprintMutation.mutateAsync({
-        file: fileToAnalyze,
-        prompt: data.prompt,
-        category: data.category || "General",
-        blueprintId: blueprintIdToUse || undefined,
-        uploadMode: data.uploadMode,
-      });
+      await analyzeBlueprintMutation.mutateAsync(mutationData);
     } catch {
       setShowProgressModal(false);
     }
