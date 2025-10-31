@@ -132,16 +132,31 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
         } = await supabase.auth.getUser();
         if (!user) throw new Error("User not authenticated");
 
+        // Sanitizar nombre del archivo (remover caracteres especiales y espacios)
+        const sanitizedFileName = file.name
+          .replace(/[^a-zA-Z0-9.-]/g, "_") // Reemplazar caracteres especiales con _
+          .replace(/_{2,}/g, "_") // Reemplazar múltiples _ con uno solo
+          .replace(/^_|_$/g, ""); // Remover _ al inicio y final
+
         // Generar nombre único para el archivo
         const timestamp = Date.now();
-        const filePath = `temp/${user.id}/${timestamp}-${file.name}`;
+        const filePath = `temp/${user.id}/${timestamp}-${sanitizedFileName}`;
+
+        console.log("[UPLOAD] Subiendo archivo:", {
+          original: file.name,
+          sanitized: sanitizedFileName,
+          path: filePath,
+        });
 
         // Subir a Supabase Storage
         const { error: uploadError } = await supabase.storage
           .from("blueprints")
           .upload(filePath, file);
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error("[UPLOAD] Error:", uploadError);
+          throw uploadError;
+        }
 
         // Obtener URL pública
         const {
