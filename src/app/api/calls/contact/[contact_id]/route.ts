@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
-// GET - Obtener todas las llamadas de un subcontractor
+// GET - Obtener todas las llamadas de un contacto
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ subcontractor_id: string }> }
+  { params }: { params: Promise<{ contact_id: string }> }
 ) {
   try {
-    const { subcontractor_id } = await params;
+    const { contact_id } = await params;
     const supabase = await createSupabaseServerClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -19,7 +19,7 @@ export async function GET(
       .from('retell_calls')
       .select('*')
       .eq('user_id', user.id)
-      .eq('subcontractor_id', subcontractor_id)
+      .eq('contact_id', contact_id)
       .order('created_at', { ascending: false });
 
     if (error) {

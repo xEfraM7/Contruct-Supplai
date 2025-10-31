@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-
 export default function Home() {
-  redirect("/overview");
+  // El middleware se encarga de redirigir según el estado de autenticación
+  return null;
 }

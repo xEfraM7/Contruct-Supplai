@@ -33,7 +33,7 @@ export async function GET() {
       );
     }
 
-    // Obtener clients del usuario con conteo de subcontractors
+    // Obtener clients del usuario
     const { data: clients, error } = await supabase
       .from("clients")
       .select("*")
@@ -48,24 +48,9 @@ export async function GET() {
       );
     }
 
-    // Contar subcontractors para cada client
-    const clientsWithSubcontractors = await Promise.all(
-      (clients || []).map(async (client) => {
-        const { count } = await supabase
-          .from("subcontractors")
-          .select("*", { count: "exact", head: true })
-          .eq("client_id", client.id);
-
-        return {
-          ...client,
-          subcontractors_count: count || 0,
-        };
-      })
-    );
-
     return NextResponse.json({
       success: true,
-      clients: clientsWithSubcontractors,
+      clients: clients || [],
     });
   } catch (error) {
     console.error("Error in clients API:", error);
@@ -141,10 +126,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      client: {
-        ...client,
-        subcontractors_count: 0,
-      },
+      client,
     });
   } catch (error) {
     console.error("Error in clients POST:", error);

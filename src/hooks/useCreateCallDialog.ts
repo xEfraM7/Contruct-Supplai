@@ -1,78 +1,28 @@
-"use client";
-
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
-interface Agent {
-  id: string;
-  agent_id: string;
-  agent_name: string;
-  voice_id: string;
-  language: string;
-}
-
 interface CreateCallDialogProps {
-  subcontractorId: string;
-  subcontractorPhone: string;
+  contactId: string;
+  contactPhone: string;
   onCallCreated?: () => void;
 }
 
 export function useCreateCallDialog({
-  subcontractorId,
-  subcontractorPhone,
+  contactId,
+  contactPhone,
   onCallCreated,
 }: CreateCallDialogProps) {
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [selectedAgentId, setSelectedAgentId] = useState("");
-  const [fromNumber, setFromNumber] = useState("");
-  const [isLoadingAgents, setIsLoadingAgents] = useState(true);
-  const [isCreatingCall, setIsCreatingCall] = useState(false);
-
-  useEffect(() => {
-    fetchAgents();
-    fetchPhoneNumber();
-  }, []);
-
-  const fetchAgents = async () => {
-    try {
-      const response = await fetch("/api/agents");
-      const data = await response.json();
-
-      if (response.ok && data.agents) {
-        const activeAgents = data.agents.filter((agent: Agent) => agent.agent_id);
-        setAgents(activeAgents);
-        if (activeAgents.length > 0) {
-          setSelectedAgentId(activeAgents[0].agent_id);
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching agents:", error);
-      toast.error("Failed to load agents");
-    } finally {
-      setIsLoadingAgents(false);
-    }
-  };
-
-  const fetchPhoneNumber = async () => {
-    try {
-      const response = await fetch("/api/calls/phone-number");
-      const data = await response.json();
-
-      if (response.ok && data.phone_number) {
-        setFromNumber(data.phone_number);
-      }
-    } catch (error) {
-      console.error("Error fetching phone number:", error);
-    }
-  };
+  const [selectedAgentId, setSelectedAgentId] = useState<string>("");
+  const [fromNumber, setFromNumber] = useState<string>("");
+  const [isCreating, setIsCreating] = useState(false);
 
   const handleCreateCall = async () => {
-    if (!selectedAgentId || !fromNumber || !subcontractorPhone) {
+    if (!selectedAgentId || !fromNumber || !contactPhone) {
       toast.error("Please fill in all required fields");
       return;
     }
 
-    setIsCreatingCall(true);
+    setIsCreating(true);
 
     try {
       const response = await fetch("/api/calls/create", {
@@ -80,38 +30,35 @@ export function useCreateCallDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           from_number: fromNumber,
-          to_number: subcontractorPhone,
+          to_number: contactPhone,
           agent_id: selectedAgentId,
-          subcontractor_id: subcontractorId,
+          contact_id: contactId,
         }),
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        toast.success("Call initiated successfully!");
-        if (onCallCreated) {
-          onCallCreated();
-        }
-      } else {
-        toast.error(data.error || "Failed to create call");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to create call");
       }
+
+      toast.success("Call created successfully");
+      onCallCreated?.();
     } catch (error) {
       console.error("Error creating call:", error);
-      toast.error("Failed to create call");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to create call"
+      );
     } finally {
-      setIsCreatingCall(false);
+      setIsCreating(false);
     }
   };
 
   return {
-    agents,
     selectedAgentId,
     setSelectedAgentId,
     fromNumber,
     setFromNumber,
-    isLoadingAgents,
-    isCreatingCall,
+    isCreating,
     handleCreateCall,
   };
 }

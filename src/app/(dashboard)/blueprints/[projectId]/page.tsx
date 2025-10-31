@@ -1,4 +1,4 @@
-import { BlueprintComponent } from "@/components/sectionComponents/BlueprintComponent";
+import { BlueprintComponent } from "@/components/sectionComponents/blueprints";
 
 interface BlueprintPageProps {
   params: Promise<{

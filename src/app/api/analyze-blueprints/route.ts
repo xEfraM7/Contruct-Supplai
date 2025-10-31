@@ -41,14 +41,14 @@ export async function POST(req: NextRequest) {
     if (user) {
       const { data: equipment } = await supabase
         .from("equipment")
-        .select("name, tag, category, status, location, value")
+        .select("name, tag, category, status, location, value, quantity")
         .eq("user_id", user.id)
         .order("category", { ascending: true });
 
       if (equipment && equipment.length > 0) {
-        equipmentContext = `\n\n## AVAILABLE PRODUCTS INVENTORY\n\nThe user has the following products available in their inventory:\n\n`;
+        equipmentContext = `\n\n## INVENTORY DATA (DO NOT MODIFY)\n\n\`\`\`json\n${JSON.stringify(equipment, null, 2)}\n\`\`\`\n`;
 
-        // Group by category
+
         interface EquipmentItem {
           name: string;
           tag: string;
@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
           status: string;
           location: string | null;
           value: number;
+          quantity: number | null;
         }
 
         const groupedEquipment = equipment.reduce(
@@ -71,13 +72,7 @@ export async function POST(req: NextRequest) {
 
         for (const [cat, items] of Object.entries(groupedEquipment)) {
           equipmentContext += `### ${cat}\n`;
-          items.forEach((item: EquipmentItem) => {
-            const statusEmoji =
-              item.status === "available"
-                ? "✅"
-                : item.status === "checked_out"
-                ? "🔄"
-                : "🔧";
+          items.forEach((item) => {
             const formattedValue = new Intl.NumberFormat("en-US", {
               style: "currency",
               currency: "USD",
@@ -85,25 +80,25 @@ export async function POST(req: NextRequest) {
               maximumFractionDigits: 0,
             }).format(item.value);
 
-            equipmentContext += `- ${statusEmoji} ${item.name} (${item.tag}) - ${item.status}`;
+            equipmentContext += `- ${item.name} (${item.tag}) - Status: ${item.status}`;
             if (item.location) {
               equipmentContext += ` - Location: ${item.location}`;
             }
-            equipmentContext += ` - Value: ${formattedValue}\n`;
+            equipmentContext += ` - Quantity: ${
+              item.quantity ?? "N/A"
+            } - Value: ${formattedValue}\n`;
           });
-          equipmentContext += "\n";
+          equipmentContext += `\n`;
         }
 
-        equipmentContext += `\nWhen analyzing the blueprint, consider this products inventory to:\n`;
-        equipmentContext += `- Recommend specific products from the inventory that would be needed for the work\n`;
-        equipmentContext += `- Identify if any required products are missing from the inventory\n`;
-        equipmentContext += `- Note which products are currently available vs checked out\n`;
-        equipmentContext += `- Suggest products that should be reserved or scheduled for this project\n\n`;
+        equipmentContext += `\nWhen analyzing the blueprint, consider this inventory to:\n`;
+        equipmentContext += `- Recommend products from inventory based on detected components\n`;
+        equipmentContext += `- Detect missing or insufficient items\n`;
+        equipmentContext += `- Flag items that are checked out or unavailable\n\n`;
       }
     }
-    console.log(equipmentContext);
 
-    // Paso 1: Subir el archivo a OpenAI
+    // Subir PDF a OpenAI
     console.log("[ANALYZE_BLUEPRINT] Subiendo PDF a OpenAI...");
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
@@ -119,82 +114,165 @@ export async function POST(req: NextRequest) {
 
     console.log("[ANALYZE_BLUEPRINT] Archivo subido, ID:", uploadedFile.id);
 
-    // Paso 2: Crear un assistant con file_search
+    // Crear Assistant
     console.log("[ANALYZE_BLUEPRINT] Creando assistant...");
     const assistant = await openai.beta.assistants.create({
-      name: "Blueprint Analyzer with Products and Budget Context",
-      instructions: `You are a senior construction engineer and technical analyst for construction blueprints. Your job is to analyze blueprint images and provide structured technical feedback, focusing on job categories and the client's products inventory.
-
-**Job categories you must consider are:**
-Electrical, Concrete, Roofing, Steel, Plumbing, Framing, Flooring, Glazing, HVAC, Drywall, Masonry, Doors and Windows.
-
-Context: The current products inventory is provided above as equipmentContext, including name, tag, category, status, value/cost, and availability.
-
-When generating your response, if any recommended products exist in the inventory, you must use the provided value/cost from the inventory. **Always show the actual value/cost given in equipmentContext—never use TBD, 'not mentioned', or suggest market estimations unless the value is actually missing. Only state 'No cost specified in inventory' if the value does not exist for that item.**
-
-For every blueprint input, your response must strictly follow **this format** and compare all blueprint-required elements against the provided products inventory:
-
----
-
-## LO SOLICITADO
-
-- Start with a brief restatement of what was requested and summarize your main findings, mentioning identified components and their job category.  
-- For each component or job category detected in the blueprint, check if appropriate products exist in the inventory (equipmentContext):
-  - For each required item, **list specific product recommendations** by name and tag, matching by job category and relevance.
-  - Indicate each product's status (Available, Checked Out, Maintenance).
-  - **State product value/cost exactly as provided in equipmentContext** to help with budgeting.
-  - If products are not present or insufficient, **explicitly note missing items and recommend alternatives or rentals**.
-- At the end of this section, include a **summary table** in this exact format:
-  
-| Job Category | Recommended Products | Status | Value/Cost | Additional Needs |
-|--------------|----------------------|--------|------------|------------------|
-| [Category] | [Product Name (Tag)] | [Status] | $[Amount] | [Notes] |
-
-Example:
-| Job Category | Recommended Products | Status | Value/Cost | Additional Needs |
-|--------------|----------------------|--------|------------|------------------|
-| Electrical | Generator 7500W (EQ-070) | Available | $2,200 | None |
-| Aerial | Scissor Lift 19ft (EQ-001) | Checked Out | $15,000 | Reserve for next week |
-
----
-
-## DISCREPANCIES
-
-- List all technical discrepancies, inconsistencies, or conflicts in the blueprint (misalignments, missing symbols, ambiguous annotations, compliance issues).
-- If product issues arise (e.g., not enough products, products unavailable for scheduled dates, capacity/fit conflicts), clearly describe them here.
-- Reference job categories for each relevant discrepancy.
-
----
-
-## RFIs
-
-- Generate Requests for Information (RFIs) to clarify missing details, conflicting elements, or uncertainties found in the blueprint.
-- For each RFI, clearly phrase it as a direct question to the design team or architect.
-- Specifically include RFIs related to products or job categories:
-  - Example: "What is the required lifting capacity for the roof trusses?"
-  - "Will additional electrical tools be rented, or should we purchase?"
-- Number RFIs clearly.
-
----
-
-All output must use concise engineering language with technical terminology, and strictly maintain the three-section structure. **Always compare blueprint requirements against equipmentContext, match by job category, and provide budgeting info using the exact values from the inventory.** If the blueprint references specialized jobs, always refer to jobCategories above for your analysis.`,
+      name: "Construction Blueprint Analysis & Quantity Takeoff Assistant",
       model: "gpt-4o",
       tools: [{ type: "file_search" }],
+      instructions: `
+You are a senior construction estimator and blueprint analyst specializing in architectural, structural, and MEP drawings. You will receive:
+
+1. A **blueprint PDF** (uploaded by the user)
+2. A **user-selected technical prompt** describing the trade focus (Electrical, Plumbing, etc.)
+3. A **list of available inventory and equipment** from the user's Supabase database
+
+---
+
+## 🎯 OBJECTIVE
+
+Analyze the attached construction blueprint in the context of the user's selected category and available inventory.
+You must extract quantities, identify materials or systems, evaluate constructability, and detect inconsistencies — then produce a **structured technical report** in the required format.
+
+---
+
+## 📘 STRUCTURE OF THE RESPONSE
+
+You must ALWAYS respond using these EXACT section headers and this structure (case‑sensitive):
+
+### ## TAKEOFF
+
+- Identify and summarize all key construction components detected in the blueprint for the selected category.
+- Group them logically by system or location (e.g., *Toilet Rooms, Electrical Rooms, Roof Level, etc.*).
+- For each detected item, show measured or estimated **quantities**, **specifications**, and **units**.
+- When possible, match detected elements to **equipment or materials available in the inventory**.
+- Use a table to calculate costs and totals using inventory pricing.
+
+Example:
+
+| Item | Unit | Quantity | Unit Cost | Total Cost |
+|------|------|-----------|-----------|------------|
+| Generator 7500W (EQ‑070) | each | 1 | $2,200 | $2,200 |
+| Air Compressor (EQ‑045) | each | 2 | $850 | $1,700 |
+
+**Total Cost for Available Items:** $3,900  
+**Additional Items Needed:** [List missing components not covered by inventory]
+
+> Notes:
+> - Use only items that exist in the provided inventory.
+> - If no matching inventory item exists, list it under "Additional Items Needed" without cost.
+
+---
+
+### ## DISCREPANCIES
+
+Document all design or documentation issues identified in the drawings, such as:
+- Missing dimensions, unclear annotations, or conflicting notes  
+- Coordination issues (structural vs. MEP, clearance conflicts)  
+- Code compliance gaps or inconsistencies with the category prompt  
+- Missing legend symbols, unreadable scales, or drawing overlaps  
+
+If **no issues** are found, write exactly:
+> No discrepancies detected.
+
+---
+
+### ## RFIs
+
+Generate formal **Requests for Information** (RFIs) to clarify missing or ambiguous information.  
+Each RFI must include a short description and be numbered sequentially.
+
+Example:
+
+- **RFI‑01:** Clarify pipe material specification for sanitary system shown in Sheet P‑203.  
+- **RFI‑02:** Confirm fire rating of wall type W3 separating mechanical and electrical rooms.
+
+If **no RFIs** are needed, write exactly:
+> No RFIs required.
+
+---
+
+### ## TECHNICAL SUMMARY
+
+Summarize key technical insights or assumptions derived from the plan:
+- Construction scope covered
+- Primary systems identified
+- Unique design features or site conditions
+- Coordination considerations or safety implications
+
+This section should be concise and written in professional engineering language.
+
+---
+
+### ## BUDGET SUMMARY
+
+Provide an overall project cost summary combining available inventory and additional required materials.
+
+IMPORTANT!
+DO NOT GIVE PRIZES THAT ARE NOT IN THE EQUIPMENT CONTEXT.
+
+| Category | Available Inventory Value | Additional Estimated Cost | Total Estimated Cost |
+|-----------|---------------------------|----------------------------|----------------------|
+| Electrical | $4,500 | $2,200 | $6,700 |
+| Plumbing | $3,200 | $900 | $4,100 |
+
+Include a short conclusion:
+> Example: “The existing inventory covers approximately 75% of the Electrical work. Procurement required for missing items totals an estimated $2,200.”
+
+---
+
+## ⚙️ TECHNICAL RULES
+
+1. Use **only** the information visible in the blueprint and provided inventory.
+2. Do **not** invent or assume dimensions, materials, or specifications.
+3. Use professional estimation judgment only when drawing information clearly supports it.
+4. Use **consistent units** (imperial or metric) based on the drawing.
+5. If the blueprint does not contain enough detail to quantify something, clearly state:  
+   > "Not enough detail available to quantify."
+6. Keep formatting clean — markdown tables, bullet lists, and bold section titles.
+7. Never deviate from the section headers:
+   - ## TAKEOFF  
+   - ## DISCREPANCIES  
+   - ## RFIs  
+   - ## TECHNICAL SUMMARY  
+   - ## BUDGET SUMMARY
+
+---
+
+## 🧠 CONTEXTUAL BEHAVIOR
+
+- Adapt your analysis depth to the **category prompt** (e.g., if category = "Electrical", focus strictly on electrical drawings, equipment, and loads).
+- Reference the **inventory** to prioritize matching existing materials before recommending purchases.
+- If inventory quantities are insufficient, calculate missing quantities and note cost impact.
+- Detect and list any inventory items that are tagged as *checked out* or *unavailable*.
+- Integrate relevant code or standard references (e.g., NEC, IPC, IBC) where applicable.
+
+---
+
+Respond with precise markdown and formatted tables.  
+Avoid generalities. Use field terminology and data-driven reasoning as a construction estimator would.`,
     });
 
-    // Paso 3: Crear un thread con el archivo adjunto
-    console.log("[ANALYZE_BLUEPRINT] Creando thread con archivo...");
+    // Crear Thread y mensaje
+    console.log("[ANALYZE_BLUEPRINT] Creando thread...");
 
-    // Construir el mensaje completo con contexto de equipos
-    let userMessage = `Category: ${finalCategory}\n\n${prompt}\n\n`;
-    console.log(equipmentContext);
+    let userMessage = ``;
+    userMessage += `AREA OF FOCUS: ${finalCategory}\n\n`;
+    userMessage += `USER QUESTION: ${prompt}\n\n`;
 
     if (equipmentContext) {
       userMessage += `${equipmentContext}\n`;
-      userMessage += `IMPORTANT: Consider the products inventory above when analyzing this blueprint. Include specific product recommendations (with tags and prices), availability status, and identify any missing products.\n\n`;
+      userMessage += `IMPORTANT: Use only this inventory to reference cost and availability of materials.\n\n`;
     }
 
-    userMessage += `Analyze the attached blueprint and provide your response in the 3 specified sections: LO SOLICITADO, DISCREPANCIES, and RFIs.`;
+    userMessage += `Please analyze the attached construction plan PDF. Follow the structured output with:\n\n
+1. TAKEOFF  
+2. TECHNICAL RESPONSE  
+3. MATERIAL COST ESTIMATION  
+4. DISCREPANCIES  
+5. RFIs  
+6. BUDGET SUMMARY\n\n
+Use engineering judgment but do not guess or assume anything not visible in the plan or inventory.\n`;
 
     const thread = await openai.beta.threads.create({
       messages: [
@@ -211,7 +289,7 @@ All output must use concise engineering language with technical terminology, and
       ],
     });
 
-    // Paso 4: Ejecutar el assistant
+    // Ejecutar el análisis
     console.log("[ANALYZE_BLUEPRINT] Ejecutando análisis...");
     const run = await openai.beta.threads.runs.createAndPoll(thread.id, {
       assistant_id: assistant.id,
@@ -221,26 +299,40 @@ All output must use concise engineering language with technical terminology, and
       throw new Error(`Run falló con estado: ${run.status}`);
     }
 
-    // Paso 5: Obtener la respuesta
-    const messages = await openai.beta.threads.messages.list(thread.id);
-    const assistantMessage = messages.data.find(
+    // Obtener resultado
+    const messagesList = await openai.beta.threads.messages.list(thread.id);
+    const assistantMessage = messagesList.data.find(
       (msg) => msg.role === "assistant"
     );
 
-    const result =
-      assistantMessage?.content[0]?.type === "text"
-        ? assistantMessage.content[0].text.value
-        : "Sin respuesta";
+    let result = "Sin respuesta generada.";
 
-    console.log("[ANALYZE_BLUEPRINT] Análisis completado");
+    if (assistantMessage?.content[0]?.type === "text") {
+      result = assistantMessage.content[0].text.value;
+    } else {
+      console.warn("[ANALYZE_BLUEPRINT] Respuesta sin contenido de texto.");
+    }
 
-    // Limpieza: Eliminar recursos temporales
+    // Paso 1: Ver respuesta cruda
+    console.log("[OPENAI RAW RESPONSE]");
+    console.log(JSON.stringify(messagesList.data, null, 2));
+
+    // Paso 2: Ver resultado final que irá al frontend
+    console.log("[AI FINAL RESULT]");
+    console.log(result);
+
+    console.log("[ANALYZE_BLUEPRINT] Análisis completado.");
+
+    // Limpieza
     try {
       await openai.beta.assistants.delete(assistant.id);
       await openai.files.delete(uploadedFile.id);
-      console.log("[ANALYZE_BLUEPRINT] Recursos limpiados");
+      console.log("[ANALYZE_BLUEPRINT] Recursos eliminados.");
     } catch (cleanupError) {
-      console.warn("[ANALYZE_BLUEPRINT] Error en limpieza:", cleanupError);
+      console.warn(
+        "[ANALYZE_BLUEPRINT] Error al limpiar recursos:",
+        cleanupError
+      );
     }
 
     return NextResponse.json({ result });
