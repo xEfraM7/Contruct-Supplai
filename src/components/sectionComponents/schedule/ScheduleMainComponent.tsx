@@ -24,6 +24,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { useScheduleLogic } from "@/hooks/useScheduleLogic";
 import { EventFormDialog } from "./EventFormDialog";
@@ -176,48 +183,92 @@ export default function ScheduleMainComponent() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendar View */}
         <Card className="lg:col-span-2 bg-card border-border">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-card-foreground flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              {monthNames[logic.currentDate.getMonth()]}{" "}
-              {logic.currentDate.getFullYear()}
-            </CardTitle>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  logic.setCurrentDate(
-                    new Date(
-                      logic.currentDate.getFullYear(),
-                      logic.currentDate.getMonth() - 1
+          <CardHeader className="flex flex-col gap-4">
+            <div className="flex flex-row items-center justify-between">
+              <CardTitle className="text-card-foreground flex items-center gap-2">
+                <Calendar className="w-5 h-5" />
+                Calendar
+              </CardTitle>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    logic.setCurrentDate(
+                      new Date(
+                        logic.currentDate.getFullYear(),
+                        logic.currentDate.getMonth() - 1
+                      )
                     )
+                  }
+                >
+                  ←
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => logic.setCurrentDate(new Date())}
+                >
+                  Today
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    logic.setCurrentDate(
+                      new Date(
+                        logic.currentDate.getFullYear(),
+                        logic.currentDate.getMonth() + 1
+                      )
+                    )
+                  }
+                >
+                  →
+                </Button>
+              </div>
+            </div>
+            <div className="flex gap-2 items-center">
+              <Select
+                value={logic.currentDate.getMonth().toString()}
+                onValueChange={(value) =>
+                  logic.setCurrentDate(
+                    new Date(logic.currentDate.getFullYear(), parseInt(value))
                   )
                 }
               >
-                ←
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => logic.setCurrentDate(new Date())}
-              >
-                Today
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {monthNames.map((month, index) => (
+                    <SelectItem key={month} value={index.toString()}>
+                      {month}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={logic.currentDate.getFullYear().toString()}
+                onValueChange={(value) =>
                   logic.setCurrentDate(
-                    new Date(
-                      logic.currentDate.getFullYear(),
-                      logic.currentDate.getMonth() + 1
-                    )
+                    new Date(parseInt(value), logic.currentDate.getMonth())
                   )
                 }
               >
-                →
-              </Button>
+                <SelectTrigger className="w-[100px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 10 }, (_, i) => {
+                    const year = new Date().getFullYear() - 2 + i;
+                    return (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
             </div>
           </CardHeader>
           <CardContent>
