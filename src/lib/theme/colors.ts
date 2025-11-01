@@ -169,6 +169,12 @@ export const themeColors = {
     },
   },
 
+  // Sidebar navigation colors
+  sidebar: {
+    navActive: "bg-gray-200 dark:bg-sidebar-accent",
+    navHover: "hover:bg-sidebar-accent/80",
+  },
+
   // Card backgrounds for different contexts
   cards: {
     budget: {

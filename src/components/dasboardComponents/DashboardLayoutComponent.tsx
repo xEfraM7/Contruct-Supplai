@@ -21,6 +21,7 @@ import { QueryProvider } from "@/lib/providers/query-provider";
 import { ThemeProvider } from "@/lib/providers/theme-provider";
 import { Toaster } from "sonner";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { themeColors } from "@/lib/theme";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Overview", path: "/overview" },
@@ -93,7 +94,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             className={cn(
               "bg-sidebar border-r border-sidebar-border flex flex-col transition-transform duration-300 ease-in-out",
               "fixed lg:static inset-y-0 left-0 z-40",
-              "w-64 lg:w-64",
+              "w-64 lg:w-80",
               isMobileMenuOpen
                 ? "translate-x-0"
                 : "-translate-x-full lg:translate-x-0"
@@ -127,8 +128,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       className={cn(
                         "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-sm font-medium",
                         pathname === item.path
-                          ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
+                          ? `${themeColors.sidebar.navActive} text-sidebar-accent-foreground`
+                          : `text-sidebar-foreground/70 ${themeColors.sidebar.navHover} hover:text-sidebar-foreground`
                       )}
                     >
                       <item.icon className="w-5 h-5" />

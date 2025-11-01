@@ -59,7 +59,7 @@ export function UserProfile() {
       await fetch("/api/auth/signout", { method: "POST" });
       window.location.href = "/login";
     } catch (err) {
-      console.error("Error al cerrar sesión:", err);
+      console.error("Error at logout:", err);
     }
   };
 
@@ -139,7 +139,7 @@ export function UserProfile() {
             className="w-full flex items-center gap-3 px-4 py-3 hover:bg-sidebar-accent/50 transition-colors text-sm text-sidebar-foreground"
           >
             <LogOut className="w-4 h-4" />
-            Cerrar sesión
+            Logout
           </button>
         </div>
       )}

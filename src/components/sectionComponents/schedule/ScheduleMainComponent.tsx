@@ -128,7 +128,7 @@ export default function ScheduleMainComponent() {
 
   return (
     <section>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
         <div>
           <h2 className="text-xl sm:text-2xl font-semibold text-foreground">
             Construction Schedule
@@ -137,15 +137,13 @@ export default function ScheduleMainComponent() {
             Manage events, inspections, and project deliveries
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => logic.setIsAddEventOpen(true)}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            New Event
-          </Button>
-        </div>
+        <Button
+          className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-[140px] shrink-0"
+          onClick={() => logic.setIsAddEventOpen(true)}
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          New Event
+        </Button>
       </div>
 
       {/* Event Form Dialogs */}
@@ -183,92 +181,98 @@ export default function ScheduleMainComponent() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendar View */}
         <Card className="lg:col-span-2 bg-card border-border">
-          <CardHeader className="flex flex-col gap-4">
-            <div className="flex flex-row items-center justify-between">
-              <CardTitle className="text-card-foreground flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
-                Calendar
-              </CardTitle>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    logic.setCurrentDate(
-                      new Date(
-                        logic.currentDate.getFullYear(),
-                        logic.currentDate.getMonth() - 1
+          <CardHeader>
+            <div className="flex flex-col gap-4">
+              {/* Title and Navigation */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <CardTitle className="text-card-foreground flex items-center gap-2">
+                  <Calendar className="w-5 h-5" />
+                  Calendar
+                </CardTitle>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      logic.setCurrentDate(
+                        new Date(
+                          logic.currentDate.getFullYear(),
+                          logic.currentDate.getMonth() - 1
+                        )
                       )
-                    )
-                  }
-                >
-                  ←
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => logic.setCurrentDate(new Date())}
-                >
-                  Today
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    logic.setCurrentDate(
-                      new Date(
-                        logic.currentDate.getFullYear(),
-                        logic.currentDate.getMonth() + 1
+                    }
+                  >
+                    ←
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => logic.setCurrentDate(new Date())}
+                  >
+                    Today
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      logic.setCurrentDate(
+                        new Date(
+                          logic.currentDate.getFullYear(),
+                          logic.currentDate.getMonth() + 1
+                        )
                       )
-                    )
-                  }
-                >
-                  →
-                </Button>
+                    }
+                  >
+                    →
+                  </Button>
+                </div>
               </div>
-            </div>
-            <div className="flex gap-2 items-center">
-              <Select
-                value={logic.currentDate.getMonth().toString()}
-                onValueChange={(value) =>
-                  logic.setCurrentDate(
-                    new Date(logic.currentDate.getFullYear(), parseInt(value))
-                  )
-                }
-              >
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {monthNames.map((month, index) => (
-                    <SelectItem key={month} value={index.toString()}>
-                      {month}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={logic.currentDate.getFullYear().toString()}
-                onValueChange={(value) =>
-                  logic.setCurrentDate(
-                    new Date(parseInt(value), logic.currentDate.getMonth())
-                  )
-                }
-              >
-                <SelectTrigger className="w-[100px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 10 }, (_, i) => {
-                    const year = new Date().getFullYear() - 2 + i;
-                    return (
-                      <SelectItem key={year} value={year.toString()}>
-                        {year}
+
+              {/* Month and Year Selectors */}
+              <div className="flex flex-wrap gap-2 items-center">
+                <span className="text-sm text-muted-foreground">View:</span>
+                <Select
+                  value={logic.currentDate.getMonth().toString()}
+                  onValueChange={(value) =>
+                    logic.setCurrentDate(
+                      new Date(logic.currentDate.getFullYear(), parseInt(value))
+                    )
+                  }
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {monthNames.map((month, index) => (
+                      <SelectItem key={month} value={index.toString()}>
+                        {month}
                       </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={logic.currentDate.getFullYear().toString()}
+                  onValueChange={(value) =>
+                    logic.setCurrentDate(
+                      new Date(parseInt(value), logic.currentDate.getMonth())
+                    )
+                  }
+                >
+                  <SelectTrigger className="w-[100px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 101 }, (_, i) => {
+                      const year = 2000 + i;
+                      return (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardHeader>
           <CardContent>

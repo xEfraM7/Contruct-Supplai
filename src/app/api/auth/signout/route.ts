@@ -35,7 +35,7 @@ export async function POST() {
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json(
-      { success: false, error: 'Error al cerrar sesión' },
+      { success: false, error: 'Error at logout' },
       { status: 500 }
     );
   }
