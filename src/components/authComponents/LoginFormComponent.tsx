@@ -140,7 +140,7 @@ export function LoginFormComponent() {
         </div>
         <div>
           <h2 className="text-xl font-semibold text-foreground">
-            Construct Supplia
+            Contractor Supplai
           </h2>
           <p className="text-sm text-muted-foreground">Construction CRM</p>
         </div>
@@ -149,7 +149,7 @@ export function LoginFormComponent() {
       {/* Welcome Text */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">
-          {isLogin ? "Welcome to Construct Supplia" : "Create your account"}
+          {isLogin ? "Welcome to Contractor Supplai" : "Create your account"}
         </h1>
         <p className="text-muted-foreground">
           {isLogin

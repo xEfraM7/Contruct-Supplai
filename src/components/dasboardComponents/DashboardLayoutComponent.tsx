@@ -60,7 +60,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
             <div>
               <h1 className="text-base font-semibold text-sidebar-foreground">
-                Construct Supplia
+                Contractor Supplai
               </h1>
             </div>
           </div>
@@ -107,7 +107,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
               <div>
                 <h1 className="text-lg font-semibold text-sidebar-foreground">
-                  Construct Supplia
+                  Contractor Supplai
                 </h1>
                 <p className="text-xs text-sidebar-foreground/60">
                   Construction CRM
