@@ -11,12 +11,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Equipment } from "@/types/equipment";
 import { themeColors } from "@/lib/theme";
+import { EquipmentTableProps } from "./types/equipment-types";
 
-interface EquipmentTableProps {
-  equipment: Equipment[];
-}
+
 
 export function EquipmentTable({ equipment }: EquipmentTableProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");

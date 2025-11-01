@@ -20,25 +20,7 @@ import { Progress } from "@/components/ui/progress";
 import { CreateProjectModal } from "@/components/modals/CreateProjectModal";
 import { themeColors } from "@/lib/theme";
 import { formatDate, getDateStatus } from "@/lib/utils/dateUtils";
-import type { Project } from "@/types/project";
-
-interface ProjectsViewProps {
-  projects: Project[];
-  isLoading: boolean;
-  metrics?: {
-    activeContracts: number;
-    totalBudget: number;
-    onTimeDelivery: number;
-  };
-  metricsLoading: boolean;
-  isModalOpen: boolean;
-  expandedProjects: Set<string>;
-  onOpenModal: (open: boolean) => void;
-  onToggleProject: (projectId: string, e?: React.MouseEvent) => void;
-  onDeleteClick: (project: Project, e: React.MouseEvent) => void;
-  calculateProgress: (project: Project) => number;
-  getStatusColor: (status?: string) => string;
-}
+import { ProjectsViewProps } from "./types/projects-types";
 
 export function ProjectsView({
   projects,

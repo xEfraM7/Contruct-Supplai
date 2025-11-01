@@ -3,17 +3,7 @@ import { Plus, Building2, Users, Phone, Mail, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CreateClientModal } from "./CreateClientModal";
-import type { Client } from "@/types/client";
-
-interface ClientsViewProps {
-  clients: Client[];
-  isLoading: boolean;
-  isCreateModalOpen: boolean;
-  onClientClick: (clientId: string) => void;
-  onAddClient: () => void;
-  onOpenCreateModal: (open: boolean) => void;
-  onCreateSuccess: () => void;
-}
+import { ClientsViewProps } from "./types/client-types";
 
 export function ClientsView({
   clients,

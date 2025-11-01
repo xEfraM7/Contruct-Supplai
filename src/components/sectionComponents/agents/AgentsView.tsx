@@ -3,17 +3,7 @@ import { Plus, Phone, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { AgentCard } from "./AgentCard";
 import { CreateAgentDialog } from "./CreateAgentDialog";
-import type { Agent } from "@/types/agent";
-
-interface AgentsViewProps {
-  agents: Agent[];
-  isLoading: boolean;
-  isCreateDialogOpen: boolean;
-  onOpenCreateDialog: (open: boolean) => void;
-  onDeleteAgent: (id: string) => void;
-  onToggleActive: (id: string, isActive: boolean) => void;
-  onCreateSuccess: () => void;
-}
+import { AgentsViewProps } from "./types/agent-types";
 
 export function AgentsView({
   agents,

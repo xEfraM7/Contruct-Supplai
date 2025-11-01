@@ -7,13 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Building2, Save, Loader2 } from "lucide-react";
 import { themeColors } from "@/lib/theme";
+import { UserSettings } from "@/types/settings";
 
-interface UserSettings {
-  companyName: string;
-  licenseNumber: string;
-  phoneNumber: string;
-  email: string;
-}
+
 
 export default function SettingsMainComponent() {
   const [settings, setSettings] = useState<UserSettings>({

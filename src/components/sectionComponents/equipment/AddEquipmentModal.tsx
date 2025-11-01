@@ -22,12 +22,9 @@ import {
   type EquipmentFormData,
 } from "@/lib/validations/equipment";
 import { useCreateEquipment } from "@/lib/hooks/use-equipment";
+import { AddEquipmentModalProps } from "./types/equipment-types";
 
-interface AddEquipmentModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onEquipmentCreated: () => void;
-}
+
 
 const categories = [
   { value: "Aerial", label: "Aerial" },

@@ -2,11 +2,9 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Package, CheckCircle, Truck, Wrench } from "lucide-react";
-import type { Equipment } from "@/types/equipment";
+import { EquipmentStatsProps } from "./types/equipment-types";
 
-interface EquipmentStatsProps {
-  equipment: Equipment[];
-}
+
 
 export function EquipmentStats({ equipment }: EquipmentStatsProps) {
   const totalAssets = equipment.length;

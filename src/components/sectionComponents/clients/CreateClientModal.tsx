@@ -14,12 +14,7 @@ import { FormInput, FormTextarea } from "@/components/form";
 import { clientSchema, type ClientFormData } from "@/lib/validations/client";
 import { useCreateClient } from "@/lib/hooks/use-clients";
 import { Loader2 } from "lucide-react";
-
-interface CreateClientModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
-}
+import { CreateClientModalProps } from "./types/client-types";
 
 export function CreateClientModal({
   open,

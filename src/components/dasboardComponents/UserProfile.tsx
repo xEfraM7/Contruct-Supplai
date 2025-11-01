@@ -3,11 +3,9 @@
 import { useEffect, useState } from "react";
 import { ChevronUp, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { User } from "./types/dashboard-types";
 
-interface User {
-  name: string;
-  email: string;
-}
+
 
 export function UserProfile() {
   const [showUserMenu, setShowUserMenu] = useState(false);

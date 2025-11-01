@@ -8,31 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { DateInput } from "@/components/ui/date-input";
 import { type ConstructionEvent } from "@/lib/actions/schedule-actions";
-
-interface EventFormData {
-  title: string;
-  description: string;
-  date: string;
-  end_date: string;
-  start_time: string;
-  end_time: string;
-  type: ConstructionEvent["type"];
-  priority: ConstructionEvent["priority"];
-  location: string;
-  assigned_to: string;
-  project_id: string;
-}
-
-interface EventFormDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  title: string;
-  formData: EventFormData;
-  setFormData: React.Dispatch<React.SetStateAction<EventFormData>>;
-  onSubmit: () => void;
-  isPending: boolean;
-  submitLabel: string;
-}
+import { EventFormDialogProps } from "./types/schedule-types";
 
 export function EventFormDialog({
   open,

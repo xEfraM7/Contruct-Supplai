@@ -2,20 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Phone, Trash2, Power, PowerOff, Globe } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-
-interface AgentCardProps {
-  agent: {
-    id: string;
-    agent_id: string;
-    agent_name: string;
-    voice_id: string;
-    language: string;
-    is_active: boolean;
-    created_at: string;
-  };
-  onDelete: (id: string) => void;
-  onToggleActive: (id: string, isActive: boolean) => void;
-}
+import { AgentCardProps } from './types/agent-types';
 
 export function AgentCard({ agent, onDelete, onToggleActive }: AgentCardProps) {
   const formatDate = (dateString: string) => {
