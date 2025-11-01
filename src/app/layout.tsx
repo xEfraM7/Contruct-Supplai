@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Construct Supplia",
+  title: "Contractor Supplai",
   description: "Manage your construction projects with confidence",
 };
 
