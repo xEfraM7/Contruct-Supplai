@@ -30,30 +30,74 @@ import { EventFormDialog } from "./EventFormDialog";
 import { themeColors } from "@/lib/theme";
 
 const eventTypeConfig = {
-  meeting: { icon: Users, color: themeColors.eventTypes.meeting.solid, label: themeColors.eventTypes.meeting.label },
-  inspection: { icon: CheckCircle, color: themeColors.eventTypes.inspection.solid, label: themeColors.eventTypes.inspection.label },
-  delivery: { icon: Truck, color: themeColors.eventTypes.delivery.solid, label: themeColors.eventTypes.delivery.label },
+  meeting: {
+    icon: Users,
+    color: themeColors.eventTypes.meeting.solid,
+    label: themeColors.eventTypes.meeting.label,
+  },
+  inspection: {
+    icon: CheckCircle,
+    color: themeColors.eventTypes.inspection.solid,
+    label: themeColors.eventTypes.inspection.label,
+  },
+  delivery: {
+    icon: Truck,
+    color: themeColors.eventTypes.delivery.solid,
+    label: themeColors.eventTypes.delivery.label,
+  },
   milestone: {
     icon: AlertTriangle,
     color: themeColors.eventTypes.milestone.solid,
     label: themeColors.eventTypes.milestone.label,
   },
-  maintenance: { icon: Wrench, color: themeColors.eventTypes.maintenance.solid, label: themeColors.eventTypes.maintenance.label },
-  safety: { icon: AlertTriangle, color: themeColors.eventTypes.safety.solid, label: themeColors.eventTypes.safety.label },
+  maintenance: {
+    icon: Wrench,
+    color: themeColors.eventTypes.maintenance.solid,
+    label: themeColors.eventTypes.maintenance.label,
+  },
+  safety: {
+    icon: AlertTriangle,
+    color: themeColors.eventTypes.safety.solid,
+    label: themeColors.eventTypes.safety.label,
+  },
 };
 
 const priorityConfig = {
-  low: { color: themeColors.priority.low.solid, label: themeColors.priority.low.label },
-  medium: { color: themeColors.priority.medium.solid, label: themeColors.priority.medium.label },
-  high: { color: themeColors.priority.high.solid, label: themeColors.priority.high.label },
-  critical: { color: themeColors.priority.critical.solid, label: themeColors.priority.critical.label },
+  low: {
+    color: themeColors.priority.low.solid,
+    label: themeColors.priority.low.label,
+  },
+  medium: {
+    color: themeColors.priority.medium.solid,
+    label: themeColors.priority.medium.label,
+  },
+  high: {
+    color: themeColors.priority.high.solid,
+    label: themeColors.priority.high.label,
+  },
+  critical: {
+    color: themeColors.priority.critical.solid,
+    label: themeColors.priority.critical.label,
+  },
 };
 
 const statusConfig = {
-  scheduled: { color: themeColors.scheduleStatus.scheduled.solid, label: themeColors.scheduleStatus.scheduled.label },
-  "in-progress": { color: themeColors.scheduleStatus["in-progress"].solid, label: themeColors.scheduleStatus["in-progress"].label },
-  completed: { color: themeColors.scheduleStatus.completed.solid, label: themeColors.scheduleStatus.completed.label },
-  cancelled: { color: themeColors.scheduleStatus.cancelled.solid, label: themeColors.scheduleStatus.cancelled.label },
+  scheduled: {
+    color: themeColors.scheduleStatus.scheduled.solid,
+    label: themeColors.scheduleStatus.scheduled.label,
+  },
+  "in-progress": {
+    color: themeColors.scheduleStatus["in-progress"].solid,
+    label: themeColors.scheduleStatus["in-progress"].label,
+  },
+  completed: {
+    color: themeColors.scheduleStatus.completed.solid,
+    label: themeColors.scheduleStatus.completed.label,
+  },
+  cancelled: {
+    color: themeColors.scheduleStatus.cancelled.solid,
+    label: themeColors.scheduleStatus.cancelled.label,
+  },
 };
 
 const monthNames = [
@@ -77,7 +121,7 @@ export default function ScheduleMainComponent() {
 
   return (
     <section>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-semibold text-foreground">
             Construction Schedule
@@ -88,7 +132,7 @@ export default function ScheduleMainComponent() {
         </div>
         <div className="flex gap-2">
           <Button
-            className="bg-white text-black border-gray-300 hover:bg-gray-50 border"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => logic.setIsAddEventOpen(true)}
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -480,7 +524,9 @@ export default function ScheduleMainComponent() {
                 <p className="text-sm text-muted-foreground mb-1">
                   Overdue Tasks
                 </p>
-                <p className={`text-3xl font-bold ${themeColors.status.error.text}`}>
+                <p
+                  className={`text-3xl font-bold ${themeColors.status.error.text}`}
+                >
                   {logic.overdueTasks.length}
                 </p>
                 <p className="text-xs mt-2 text-muted-foreground">
@@ -489,8 +535,12 @@ export default function ScheduleMainComponent() {
                     : "Need attention"}
                 </p>
               </div>
-              <div className={`w-12 h-12 rounded-lg ${themeColors.status.error.bg} flex items-center justify-center`}>
-                <AlertTriangle className={`w-6 h-6 ${themeColors.status.error.icon}`} />
+              <div
+                className={`w-12 h-12 rounded-lg ${themeColors.status.error.bg} flex items-center justify-center`}
+              >
+                <AlertTriangle
+                  className={`w-6 h-6 ${themeColors.status.error.icon}`}
+                />
               </div>
             </div>
           </CardContent>
@@ -503,15 +553,21 @@ export default function ScheduleMainComponent() {
                 <p className="text-sm text-muted-foreground mb-1">
                   Inspections
                 </p>
-                <p className={`text-3xl font-bold ${themeColors.status.success.text}`}>
+                <p
+                  className={`text-3xl font-bold ${themeColors.status.success.text}`}
+                >
                   {logic.events.filter((e) => e.type === "inspection").length}
                 </p>
                 <p className="text-xs mt-2 text-muted-foreground">
                   Scheduled this month
                 </p>
               </div>
-              <div className={`w-12 h-12 rounded-lg ${themeColors.status.success.bg} flex items-center justify-center`}>
-                <CheckCircle className={`w-6 h-6 ${themeColors.status.success.icon}`} />
+              <div
+                className={`w-12 h-12 rounded-lg ${themeColors.status.success.bg} flex items-center justify-center`}
+              >
+                <CheckCircle
+                  className={`w-6 h-6 ${themeColors.status.success.icon}`}
+                />
               </div>
             </div>
           </CardContent>
