@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,6 +52,16 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
   const [selectedBlueprintForView, setSelectedBlueprintForView] = useState<
     string | null
   >(null);
+  const hasSetInitialMode = useRef(false);
+
+  // Use custom hooks
+  const { data: projectData } = useProject(projectId);
+  const {
+    data: blueprintsData,
+    isLoading: loadingBlueprints,
+    error: blueprintsError,
+  } = useBlueprints(projectId);
+  const blueprints = blueprintsData?.blueprints || [];
 
   // React Hook Form
   const {
@@ -66,7 +76,7 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
       category: "",
       prompt: "",
       file: null,
-      uploadMode: "new",
+      uploadMode: blueprints.length > 0 ? "existing" : "new",
       selectedBlueprintId: null,
     },
   });
@@ -77,18 +87,22 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
   const selectedBlueprintId = watch("selectedBlueprintId");
   const fileList = watch("file");
 
-  // Use custom hooks
-  const { data: projectData } = useProject(projectId);
-  const {
-    data: blueprintsData,
-    isLoading: loadingBlueprints,
-    error: blueprintsError,
-  } = useBlueprints(projectId);
+  // Update uploadMode when blueprints are loaded (only once on initial load)
+  useEffect(() => {
+    if (
+      !loadingBlueprints &&
+      blueprints.length > 0 &&
+      !hasSetInitialMode.current
+    ) {
+      setValue("uploadMode", "existing");
+      hasSetInitialMode.current = true;
+    }
+  }, [loadingBlueprints, blueprints.length, setValue]);
+
   const { data: analysesData, isLoading: loadingAnalyses } = useAnalyses(
     selectedBlueprintForView
   );
 
-  const blueprints = blueprintsData?.blueprints || [];
   const analyses = analysesData?.analyses || [];
   const projectName = projectData?.project?.name || "";
 
@@ -433,355 +447,410 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
 
                   {/* AI Extracted Items Section */}
                   {analysisResult.extractedItems &&
-                    analysisResult.extractedItems.length > 0 && (
-                      <div className="mt-6">
-                        <Card className="bg-card border-border">
-                          <CardHeader className="pb-4">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                              <div>
-                                <h3 className="text-lg font-semibold text-card-foreground">
-                                  AI Extracted Items
-                                </h3>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  Automatically detected from blueprints
-                                </p>
+                    analysisResult.extractedItems.length > 0 &&
+                    (() => {
+                      // Define types for grouping
+                      interface GroupedItem {
+                        itemId: string;
+                        description: string;
+                        quantity: number;
+                        unitCost: number;
+                        total: number;
+                        confidence: number;
+                        source: string;
+                        count: number;
+                        totalWeightedConfidence: number;
+                        totalWeightedUnitCost: number;
+                      }
+
+                      interface ConsolidatedItem {
+                        itemId: string;
+                        description: string;
+                        quantity: number;
+                        unitCost: number;
+                        total: number;
+                        confidence: number;
+                        source: string;
+                      }
+
+                      // Group items by description
+                      const groupedItems =
+                        analysisResult.extractedItems!.reduce((acc, item) => {
+                          const key = item.description;
+                          if (!acc[key]) {
+                            acc[key] = {
+                              itemId: item.itemId,
+                              description: item.description,
+                              quantity: 0,
+                              unitCost: 0,
+                              total: 0,
+                              confidence: 0,
+                              source: item.source,
+                              count: 0,
+                              totalWeightedConfidence: 0,
+                              totalWeightedUnitCost: 0,
+                            };
+                          }
+                          acc[key].quantity += item.quantity;
+                          acc[key].total += item.total;
+                          acc[key].totalWeightedConfidence +=
+                            item.confidence * item.quantity;
+                          acc[key].totalWeightedUnitCost +=
+                            item.unitCost * item.quantity;
+                          acc[key].count += 1;
+                          return acc;
+                        }, {} as Record<string, GroupedItem>);
+
+                      // Calculate weighted averages
+                      const consolidatedItems: ConsolidatedItem[] =
+                        Object.values(groupedItems).map((group) => ({
+                          itemId: group.itemId,
+                          description: group.description,
+                          quantity: group.quantity,
+                          unitCost:
+                            group.totalWeightedUnitCost / group.quantity,
+                          total: group.total,
+                          confidence: Math.round(
+                            group.totalWeightedConfidence / group.quantity
+                          ),
+                          source: group.source,
+                        }));
+
+                      return (
+                        <div className="mt-6">
+                          <Card className="bg-card border-border">
+                            <CardHeader className="pb-4">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div>
+                                  <h3 className="text-lg font-semibold text-card-foreground">
+                                    AI Extracted Items
+                                  </h3>
+                                  <p className="text-sm text-muted-foreground mt-1">
+                                    Automatically detected from blueprints
+                                  </p>
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  className="w-full sm:w-auto"
+                                  onClick={() => {
+                                    const totalCostAvailable =
+                                      analysisResult.totalCostAvailable || 0;
+                                    const totalCostNeeded =
+                                      analysisResult.totalCostNeeded || 0;
+                                    const availableCount =
+                                      analysisResult.availableItemsCount || 0;
+                                    const neededCount =
+                                      analysisResult.neededItemsCount || 0;
+
+                                    const csv = [
+                                      [
+                                        "ITEM ID",
+                                        "DESCRIPTION",
+                                        "QTY",
+                                        "UNIT COST",
+                                        "TOTAL",
+                                        "CONFIDENCE",
+                                        "SOURCE",
+                                      ],
+                                      ...analysisResult.extractedItems!.map(
+                                        (item) => [
+                                          item.itemId,
+                                          `"${item.description}"`,
+                                          item.quantity.toFixed(2),
+                                          `$${item.unitCost.toFixed(2)}`,
+                                          `$${item.total.toFixed(2)}`,
+                                          `${item.confidence}%`,
+                                          item.source,
+                                        ]
+                                      ),
+                                      [""],
+                                      ["PROJECT BUDGET SUMMARY"],
+                                      [
+                                        "Total Project Cost",
+                                        `$${(
+                                          totalCostAvailable + totalCostNeeded
+                                        ).toFixed(2)}`,
+                                      ],
+                                      [
+                                        "From Inventory",
+                                        `$${totalCostAvailable.toFixed(
+                                          2
+                                        )} (${availableCount} items)`,
+                                      ],
+                                      [
+                                        "Need to Acquire",
+                                        `$${totalCostNeeded.toFixed(
+                                          2
+                                        )} (${neededCount} items)`,
+                                      ],
+                                    ]
+                                      .map((row) => row.join(","))
+                                      .join("\n");
+
+                                    const blob = new Blob([csv], {
+                                      type: "text/csv",
+                                    });
+                                    const url =
+                                      window.URL.createObjectURL(blob);
+                                    const a = document.createElement("a");
+                                    a.href = url;
+                                    a.download =
+                                      "blueprint-analysis-budget.csv";
+                                    a.click();
+                                  }}
+                                >
+                                  Export CSV
+                                </Button>
                               </div>
-                              <Button
-                                variant="outline"
-                                className="w-full sm:w-auto"
-                                onClick={() => {
-                                  // Export to CSV functionality with budget breakdown
-                                  const totalCostAvailable =
-                                    analysisResult.totalCostAvailable || 0;
-                                  const totalCostNeeded =
-                                    analysisResult.totalCostNeeded || 0;
-                                  const availableCount =
-                                    analysisResult.availableItemsCount || 0;
-                                  const neededCount =
-                                    analysisResult.neededItemsCount || 0;
-
-                                  const csv = [
-                                    [
-                                      "ITEM ID",
-                                      "DESCRIPTION",
-                                      "QTY",
-                                      "UNIT COST",
-                                      "TOTAL",
-                                      "CONFIDENCE",
-                                      "SOURCE",
-                                    ],
-                                    ...analysisResult.extractedItems!.map(
-                                      (item) => [
-                                        item.itemId,
-                                        item.csiCode,
-                                        item.description,
-                                        item.quantity,
-                                        item.unit,
-                                        `$${item.unitCost.toFixed(2)}`,
-                                        `$${item.total.toFixed(2)}`,
-                                        `${item.confidence}%`,
-                                        item.source,
-                                      ]
-                                    ),
-                                    [""], // Empty row
-                                    ["PROJECT BUDGET SUMMARY"],
-                                    [
-                                      "Total Project Cost",
-                                      "",
-                                      "",
-                                      "",
-                                      "",
-                                      "",
-                                      `$${(
-                                        totalCostAvailable + totalCostNeeded
-                                      ).toFixed(2)}`,
-                                      "",
-                                      "",
-                                    ],
-                                    [
-                                      "From Inventory",
-                                      "",
-                                      "",
-                                      availableCount,
-                                      "items",
-                                      "",
-                                      `$${totalCostAvailable.toFixed(2)}`,
-                                      "",
-                                      "",
-                                    ],
-                                    [
-                                      "Need to Acquire",
-                                      "",
-                                      "",
-                                      neededCount,
-                                      "items",
-                                      "",
-                                      `$${totalCostNeeded.toFixed(2)}`,
-                                      "",
-                                      "",
-                                    ],
-                                  ]
-                                    .map((row) => row.join(","))
-                                    .join("\n");
-
-                                  const blob = new Blob([csv], {
-                                    type: "text/csv",
-                                  });
-                                  const url = window.URL.createObjectURL(blob);
-                                  const a = document.createElement("a");
-                                  a.href = url;
-                                  a.download = "blueprint-analysis-budget.csv";
-                                  a.click();
-                                }}
-                              >
-                                Export CSV
-                              </Button>
-                            </div>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0">
-                              <table className="w-full min-w-[700px]">
-                                <thead>
-                                  <tr className="border-b border-border">
-                                    <th className="text-left py-3 px-2 sm:px-4 text-xs font-semibold text-muted-foreground uppercase">
-                                      Item ID
-                                    </th>
-                                    <th className="text-left py-3 px-2 sm:px-4 text-xs font-semibold text-muted-foreground uppercase">
-                                      Description
-                                    </th>
-                                    <th className="text-right py-3 px-2 sm:px-4 text-xs font-semibold text-muted-foreground uppercase">
-                                      QTY
-                                    </th>
-                                    <th className="text-right py-3 px-2 sm:px-4 text-xs font-semibold text-muted-foreground uppercase">
-                                      Unit Cost
-                                    </th>
-                                    <th className="text-right py-3 px-2 sm:px-4 text-xs font-semibold text-muted-foreground uppercase">
-                                      Total
-                                    </th>
-                                    <th className="text-center py-3 px-2 sm:px-4 text-xs font-semibold text-muted-foreground uppercase">
-                                      Confidence
-                                    </th>
-                                    <th className="text-left py-3 px-2 sm:px-4 text-xs font-semibold text-muted-foreground uppercase">
-                                      Source
-                                    </th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {analysisResult.extractedItems.map((item) => (
-                                    <tr
-                                      key={item.itemId}
-                                      className="border-b border-border hover:bg-muted/30 transition-colors"
-                                    >
-                                      <td className="py-3 px-2 sm:px-4">
-                                        <span className="text-sm font-medium text-card-foreground">
-                                          {item.itemId}
-                                        </span>
-                                      </td>
-                                      <td className="py-3 px-2 sm:px-4">
-                                        <span className="text-sm text-card-foreground">
-                                          {item.description}
-                                        </span>
-                                      </td>
-                                      <td className="py-3 px-2 sm:px-4 text-right">
-                                        <span className="text-sm text-card-foreground">
-                                          {item.quantity.toFixed(2)}
-                                        </span>
-                                      </td>
-                                      <td className="py-3 px-2 sm:px-4 text-right">
-                                        <span className="text-sm text-card-foreground">
-                                          ${item.unitCost.toFixed(2)}
-                                        </span>
-                                      </td>
-                                      <td className="py-3 px-2 sm:px-4 text-right">
-                                        <span className="text-sm font-medium text-card-foreground">
-                                          ${item.total.toFixed(2)}
-                                        </span>
-                                      </td>
-                                      <td className="py-3 px-2 sm:px-4">
-                                        <div className="flex items-center justify-center gap-2">
-                                          <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
-                                            <div
-                                              className={cn(
-                                                "h-full",
-                                                item.confidence >= 90
-                                                  ? themeColors.confidence.high
-                                                  : themeColors.confidence
-                                                      .medium
-                                              )}
-                                              style={{
-                                                width: `${item.confidence}%`,
-                                              }}
-                                            />
-                                          </div>
-                                          <span className="text-xs font-medium text-card-foreground">
-                                            {item.confidence}%
-                                          </span>
-                                        </div>
-                                      </td>
-                                      <td className="py-3 px-2 sm:px-4">
-                                        <span className="text-xs text-muted-foreground">
-                                          {item.source}
-                                        </span>
-                                      </td>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0">
+                                <table className="w-full min-w-[700px]">
+                                  <thead>
+                                    <tr className="border-b border-border">
+                                      <th className="text-left py-3 px-2 sm:px-4 text-xs font-semibold text-muted-foreground uppercase">
+                                        Item ID
+                                      </th>
+                                      <th className="text-left py-3 px-2 sm:px-4 text-xs font-semibold text-muted-foreground uppercase">
+                                        Description
+                                      </th>
+                                      <th className="text-right py-3 px-2 sm:px-4 text-xs font-semibold text-muted-foreground uppercase">
+                                        QTY
+                                      </th>
+                                      <th className="text-right py-3 px-2 sm:px-4 text-xs font-semibold text-muted-foreground uppercase">
+                                        Unit Cost
+                                      </th>
+                                      <th className="text-right py-3 px-2 sm:px-4 text-xs font-semibold text-muted-foreground uppercase">
+                                        Total
+                                      </th>
+                                      <th className="text-center py-3 px-2 sm:px-4 text-xs font-semibold text-muted-foreground uppercase">
+                                        Confidence
+                                      </th>
+                                      <th className="text-left py-3 px-2 sm:px-4 text-xs font-semibold text-muted-foreground uppercase">
+                                        Source
+                                      </th>
                                     </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-
-                            {/* Budget Summary */}
-                            <div
-                              className={`mt-6 p-4 rounded-lg border ${themeColors.cards.budget.bg} ${themeColors.cards.budget.border}`}
-                            >
-                              <div className="flex flex-col gap-4">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                  <div>
-                                    <h4
-                                      className={`text-lg font-semibold mb-1 ${themeColors.cards.budget.title}`}
-                                    >
-                                      Project Budget Summary
-                                    </h4>
-                                    <p
-                                      className={`text-sm ${themeColors.cards.budget.text}`}
-                                    >
-                                      Cost breakdown for extracted items
-                                    </p>
-                                  </div>
-                                  <div className="text-right">
-                                    <div
-                                      className={`text-2xl font-bold ${themeColors.cards.budget.title}`}
-                                    >
-                                      $
-                                      {(
-                                        (analysisResult.totalCostAvailable ||
-                                          0) +
-                                        (analysisResult.totalCostNeeded || 0)
-                                      ).toFixed(2)}
-                                    </div>
-                                    <div
-                                      className={`text-xs ${themeColors.cards.budget.text}`}
-                                    >
-                                      Total Project Cost
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Detailed Breakdown */}
-                                <div
-                                  className={`grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t ${themeColors.cards.budget.border}`}
-                                >
-                                  {/* Available Items */}
-                                  {analysisResult.totalCostAvailable &&
-                                    analysisResult.totalCostAvailable > 0 && (
-                                      <div
-                                        className={`rounded-lg p-3 border ${themeColors.cards.inventory.bg} ${themeColors.cards.inventory.border}`}
+                                  </thead>
+                                  <tbody>
+                                    {consolidatedItems.map((item) => (
+                                      <tr
+                                        key={item.itemId}
+                                        className="border-b border-border hover:bg-muted/30 transition-colors"
                                       >
-                                        <div className="flex items-center justify-between mb-2">
-                                          <h5
-                                            className={`font-semibold ${themeColors.cards.inventory.title}`}
-                                          >
-                                            From Inventory
-                                          </h5>
-                                          <span
-                                            className={`text-lg font-bold ${themeColors.cards.inventory.title}`}
-                                          >
-                                            $
-                                            {analysisResult.totalCostAvailable.toFixed(
-                                              2
-                                            )}
+                                        <td className="py-3 px-2 sm:px-4">
+                                          <span className="text-sm font-medium text-card-foreground">
+                                            {item.itemId}
                                           </span>
-                                        </div>
-                                        <p
-                                          className={`text-sm ${themeColors.cards.inventory.text}`}
-                                        >
-                                          {analysisResult.availableItemsCount ||
-                                            0}{" "}
-                                          items available in inventory
-                                        </p>
-                                      </div>
-                                    )}
-
-                                  {/* Needed Items */}
-                                  {analysisResult.totalCostNeeded &&
-                                    analysisResult.totalCostNeeded > 0 && (
-                                      <div
-                                        className={`rounded-lg p-3 border ${themeColors.cards.needed.bg} ${themeColors.cards.needed.border}`}
-                                      >
-                                        <div className="flex items-center justify-between mb-2">
-                                          <h5
-                                            className={`font-semibold ${themeColors.cards.needed.title}`}
-                                          >
-                                            Need to Acquire
-                                          </h5>
-                                          <span
-                                            className={`text-lg font-bold ${themeColors.cards.needed.title}`}
-                                          >
-                                            $
-                                            {analysisResult.totalCostNeeded.toFixed(
-                                              2
-                                            )}
+                                        </td>
+                                        <td className="py-3 px-2 sm:px-4">
+                                          <span className="text-sm text-card-foreground">
+                                            {item.description}
                                           </span>
-                                        </div>
-                                        <p
-                                          className={`text-sm ${themeColors.cards.needed.text}`}
-                                        >
-                                          {analysisResult.neededItemsCount || 0}{" "}
-                                          items to purchase/rent
-                                        </p>
-                                      </div>
-                                    )}
-                                </div>
+                                        </td>
+                                        <td className="py-3 px-2 sm:px-4 text-right">
+                                          <span className="text-sm text-card-foreground">
+                                            {item.quantity.toFixed(2)}
+                                          </span>
+                                        </td>
+                                        <td className="py-3 px-2 sm:px-4 text-right">
+                                          <span className="text-sm text-card-foreground">
+                                            ${item.unitCost.toFixed(2)}
+                                          </span>
+                                        </td>
+                                        <td className="py-3 px-2 sm:px-4 text-right">
+                                          <span className="text-sm font-medium text-card-foreground">
+                                            ${item.total.toFixed(2)}
+                                          </span>
+                                        </td>
+                                        <td className="py-3 px-2 sm:px-4">
+                                          <div className="flex items-center justify-center gap-2">
+                                            <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
+                                              <div
+                                                className={cn(
+                                                  "h-full",
+                                                  item.confidence >= 90
+                                                    ? themeColors.confidence
+                                                        .high
+                                                    : themeColors.confidence
+                                                        .medium
+                                                )}
+                                                style={{
+                                                  width: `${item.confidence}%`,
+                                                }}
+                                              />
+                                            </div>
+                                            <span className="text-xs font-medium text-card-foreground">
+                                              {item.confidence}%
+                                            </span>
+                                          </div>
+                                        </td>
+                                        <td className="py-3 px-2 sm:px-4">
+                                          <span className="text-xs text-muted-foreground">
+                                            {item.source}
+                                          </span>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
                               </div>
-                            </div>
 
-                            {/* Discrepancies Alert */}
-                            {analysisResult.discrepancyCount &&
-                              analysisResult.discrepancyCount > 0 && (
-                                <div
-                                  className={`mt-6 p-4 rounded-lg border ${themeColors.cards.alert.bg} ${themeColors.cards.alert.border}`}
-                                >
-                                  <div className="flex items-start gap-3">
-                                    <AlertTriangle
-                                      className={`w-5 h-5 mt-0.5 shrink-0 ${themeColors.cards.alert.icon}`}
-                                    />
-                                    <div className="flex-1">
+                              {/* Budget Summary */}
+                              <div
+                                className={`mt-6 p-4 rounded-lg border ${themeColors.cards.budget.bg} ${themeColors.cards.budget.border}`}
+                              >
+                                <div className="flex flex-col gap-4">
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div>
                                       <h4
-                                        className={`text-sm font-semibold mb-1 ${themeColors.cards.alert.title}`}
+                                        className={`text-lg font-semibold mb-1 ${themeColors.cards.budget.title}`}
                                       >
-                                        {analysisResult.discrepancyCount}{" "}
-                                        Discrepancies Detected
+                                        Project Budget Summary
                                       </h4>
                                       <p
-                                        className={`text-sm mb-3 ${themeColors.cards.alert.text}`}
+                                        className={`text-sm ${themeColors.cards.budget.text}`}
                                       >
-                                        Our AI has identified conflicts between
-                                        blueprints and schedules
+                                        Cost breakdown for extracted items
                                       </p>
-                                      <Button
-                                        size="sm"
-                                        variant="destructive"
-                                        className={
-                                          themeColors.interactive.delete.button
-                                        }
-                                        onClick={() =>
-                                          setActiveMenu("Discrepancies")
-                                        }
+                                    </div>
+                                    <div className="text-right">
+                                      <div
+                                        className={`text-2xl font-bold ${themeColors.cards.budget.title}`}
                                       >
-                                        Review Discrepancies
-                                      </Button>
+                                        $
+                                        {(
+                                          (analysisResult.totalCostAvailable ||
+                                            0) +
+                                          (analysisResult.totalCostNeeded || 0)
+                                        ).toFixed(2)}
+                                      </div>
+                                      <div
+                                        className={`text-xs ${themeColors.cards.budget.text}`}
+                                      >
+                                        Total Project Cost
+                                      </div>
                                     </div>
                                   </div>
+
+                                  {/* Detailed Breakdown */}
+                                  <div
+                                    className={`grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t ${themeColors.cards.budget.border}`}
+                                  >
+                                    {/* Available Items */}
+                                    {analysisResult.totalCostAvailable &&
+                                      analysisResult.totalCostAvailable > 0 && (
+                                        <div
+                                          className={`rounded-lg p-3 border ${themeColors.cards.inventory.bg} ${themeColors.cards.inventory.border}`}
+                                        >
+                                          <div className="flex items-center justify-between mb-2">
+                                            <h5
+                                              className={`font-semibold ${themeColors.cards.inventory.title}`}
+                                            >
+                                              From Inventory
+                                            </h5>
+                                            <span
+                                              className={`text-lg font-bold ${themeColors.cards.inventory.title}`}
+                                            >
+                                              $
+                                              {analysisResult.totalCostAvailable.toFixed(
+                                                2
+                                              )}
+                                            </span>
+                                          </div>
+                                          <p
+                                            className={`text-sm ${themeColors.cards.inventory.text}`}
+                                          >
+                                            {analysisResult.availableItemsCount ||
+                                              0}{" "}
+                                            items available in inventory
+                                          </p>
+                                        </div>
+                                      )}
+
+                                    {/* Needed Items */}
+                                    {analysisResult.totalCostNeeded &&
+                                      analysisResult.totalCostNeeded > 0 && (
+                                        <div
+                                          className={`rounded-lg p-3 border ${themeColors.cards.needed.bg} ${themeColors.cards.needed.border}`}
+                                        >
+                                          <div className="flex items-center justify-between mb-2">
+                                            <h5
+                                              className={`font-semibold ${themeColors.cards.needed.title}`}
+                                            >
+                                              Need to Acquire
+                                            </h5>
+                                            <span
+                                              className={`text-lg font-bold ${themeColors.cards.needed.title}`}
+                                            >
+                                              $
+                                              {analysisResult.totalCostNeeded.toFixed(
+                                                2
+                                              )}
+                                            </span>
+                                          </div>
+                                          <p
+                                            className={`text-sm ${themeColors.cards.needed.text}`}
+                                          >
+                                            {analysisResult.neededItemsCount ||
+                                              0}{" "}
+                                            items to purchase/rent
+                                          </p>
+                                        </div>
+                                      )}
+                                  </div>
                                 </div>
-                              )}
-                          </CardContent>
-                        </Card>
-                      </div>
-                    )}
+                              </div>
+
+                              {/* Discrepancies Alert */}
+                              {analysisResult.discrepancyCount &&
+                                analysisResult.discrepancyCount > 0 && (
+                                  <div
+                                    className={`mt-6 p-4 rounded-lg border ${themeColors.cards.alert.bg} ${themeColors.cards.alert.border}`}
+                                  >
+                                    <div className="flex items-start gap-3">
+                                      <AlertTriangle
+                                        className={`w-5 h-5 mt-0.5 shrink-0 ${themeColors.cards.alert.icon}`}
+                                      />
+                                      <div className="flex-1">
+                                        <h4
+                                          className={`text-sm font-semibold mb-1 ${themeColors.cards.alert.title}`}
+                                        >
+                                          {analysisResult.discrepancyCount}{" "}
+                                          Discrepancies Detected
+                                        </h4>
+                                        <p
+                                          className={`text-sm mb-3 ${themeColors.cards.alert.text}`}
+                                        >
+                                          Our AI has identified conflicts
+                                          between blueprints and schedules
+                                        </p>
+                                        <Button
+                                          size="sm"
+                                          variant="destructive"
+                                          className={
+                                            themeColors.interactive.delete
+                                              .button
+                                          }
+                                          onClick={() =>
+                                            setActiveMenu("Discrepancies")
+                                          }
+                                        >
+                                          Review Discrepancies
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                            </CardContent>
+                          </Card>
+                        </div>
+                      );
+                    })()}
                 </>
               )}
             </>
           )}
-
+          {/* aqui */}
           {activeMenu === "Discrepancies" && (
             <div className="min-h-[400px]">
               {analysisResult ? (

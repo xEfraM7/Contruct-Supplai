@@ -63,6 +63,8 @@ export async function POST(req: NextRequest) {
           null,
           2
         )}\n\`\`\`\n\nUse this inventory for item matching and cost referencing.\n`;
+      } else {
+        equipmentContext = `\n\n## INVENTORY STATUS\n\n**⚠️ NO INVENTORY AVAILABLE**\n\nThe user has 0 items in their equipment inventory.\n\n**CRITICAL INSTRUCTIONS FOR EMPTY INVENTORY:**\n\n1. **DO NOT include any prices or costs in the TAKEOFF table**\n2. **DO NOT create cost estimates or dollar amounts**\n3. **DO NOT invent, assume, or estimate any prices**\n4. Format the TAKEOFF table as:\n   | Item | Unit | Quantity | Unit Cost | Total Cost |\n   |------|------|----------|-----------|------------|\n   | [Item name] | [unit] | [qty] | N/A | N/A |\n\n5. In the BUDGET SUMMARY section, state:\n   "**Cannot provide cost estimates** - No inventory data available. Please add equipment to your inventory before requesting cost analysis."\n\n6. Focus on:\n   - Identifying required items and quantities\n   - Technical specifications\n   - Material types and standards\n   - Installation requirements\n\n7. **NEVER use example prices, market estimates, or placeholder costs**\n\n`;
       }
     }
 
@@ -192,7 +194,11 @@ Example: "The existing inventory covers approximately X% of the [Category] work.
 
     if (equipmentContext) {
       userMessage += `${equipmentContext}\n`;
-      userMessage += `IMPORTANT: Use only this inventory to reference cost and availability of materials.\n\n`;
+      if (equipmentContext.includes("NO INVENTORY AVAILABLE")) {
+        userMessage += `⚠️ CRITICAL: Since inventory is empty, DO NOT provide any cost estimates or prices. List items with "N/A" for costs.\n\n`;
+      } else {
+        userMessage += `IMPORTANT: Use only this inventory to reference cost and availability of materials.\n\n`;
+      }
     }
 
     userMessage += `Please analyze the attached construction plan PDF. Follow the structured output with:\n\n
