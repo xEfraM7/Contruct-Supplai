@@ -441,9 +441,25 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
               {analysisResult && (
                 <>
                   <div className="mt-6 p-4 border rounded bg-muted/30 whitespace-pre-wrap text-sm">
-                    <h4 className="text-md font-semibold mb-2">Requested:</h4>
+                    <h4 className="text-md font-semibold mb-2">Takeoff:</h4>
                     {analysisResult.requested}
                   </div>
+
+                  {/* Technical Summary */}
+                  {analysisResult.technicalSummary && (
+                    <div className="mt-6 p-4 border rounded bg-muted/30 whitespace-pre-wrap text-sm">
+                      <h4 className="text-md font-semibold mb-2">Technical Summary:</h4>
+                      {analysisResult.technicalSummary}
+                    </div>
+                  )}
+
+                  {/* Budget Summary */}
+                  {analysisResult.budgetSummary && (
+                    <div className="mt-6 p-4 border rounded bg-muted/30 whitespace-pre-wrap text-sm">
+                      <h4 className="text-md font-semibold mb-2">Budget Summary:</h4>
+                      {analysisResult.budgetSummary}
+                    </div>
+                  )}
 
                   {/* AI Extracted Items Section */}
                   {analysisResult.extractedItems &&

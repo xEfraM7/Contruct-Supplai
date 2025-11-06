@@ -14,7 +14,41 @@ export const parseAnalysisResult = (text: string): AnalysisResult => {
   const discrepanciesMatch = text.match(
     /##\s*DISCREPANCIES\s*([\s\S]*?)(?=##\s*RFIs|$)/i
   );
-  const rfisMatch = text.match(/##\s*RFIs\s*([\s\S]*?)$/i);
+  
+  // Extraer RFIs y limpiar contenido extra
+  const rfisMatch = text.match(/##\s*RFIs\s*([\s\S]*?)(?=##\s*TECHNICAL SUMMARY|##\s*BUDGET SUMMARY|$)/i);
+  
+  let cleanedRfis = rfisMatch?.[1]?.trim() || "No RFIs required";
+  
+  // Limpiar la sección de RFIs: solo mantener líneas que empiecen con "- **RFI-"
+  if (cleanedRfis && cleanedRfis !== "No RFIs required") {
+    const rfiLines = cleanedRfis.split('\n');
+    const actualRfis = rfiLines.filter(line => {
+      const trimmed = line.trim();
+      // Mantener solo líneas que sean RFIs o estén vacías
+      return trimmed === '' || 
+             trimmed.startsWith('- **RFI-') || 
+             trimmed.startsWith('**RFI-') ||
+             trimmed.match(/^-?\s*\*\*RFI-\d+:/);
+    });
+    
+    // Si encontramos RFIs válidos, usar solo esos
+    if (actualRfis.some(line => line.includes('RFI-'))) {
+      cleanedRfis = actualRfis.join('\n').trim();
+    }
+  }
+
+  // Extraer TECHNICAL SUMMARY
+  const technicalSummaryMatch = text.match(
+    /##\s*TECHNICAL SUMMARY\s*([\s\S]*?)(?=##\s*BUDGET SUMMARY|##\s*RFIs|$)/i
+  );
+  const technicalSummary = technicalSummaryMatch?.[1]?.trim() || undefined;
+
+  // Extraer BUDGET SUMMARY
+  const budgetSummaryMatch = text.match(
+    /##\s*BUDGET SUMMARY\s*([\s\S]*?)$/i
+  );
+  const budgetSummary = budgetSummaryMatch?.[1]?.trim() || undefined;
 
   // Extract items from summary table if exists
   const extractedItems: ExtractedItem[] = [];
@@ -213,7 +247,9 @@ export const parseAnalysisResult = (text: string): AnalysisResult => {
   return {
     requested: requestedContent,
     discrepancies: discrepancyText || "No discrepancies detected",
-    rfis: rfisMatch?.[1]?.trim() || "No RFIs required",
+    rfis: cleanedRfis,
+    technicalSummary,
+    budgetSummary,
     extractedItems: extractedItems.length > 0 ? extractedItems : undefined,
     discrepancyCount: discrepancyCount > 0 ? discrepancyCount : undefined,
     totalCostAvailable:

@@ -16,6 +16,8 @@ export interface AnalysisResult {
   requested: string;
   discrepancies: string;
   rfis: string;
+  technicalSummary?: string;
+  budgetSummary?: string;
   extractedItems?: ExtractedItem[];
   discrepancyCount?: number;
   totalCostAvailable?: number;
