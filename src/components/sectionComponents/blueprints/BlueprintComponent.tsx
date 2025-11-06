@@ -323,7 +323,7 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
 
                 {/* Upload New */}
                 {uploadMode === "new" && (
-                  <div className="relative">
+                  <div key="upload-new" className="relative">
                     <input
                       type="file"
                       accept=".pdf"
@@ -358,7 +358,7 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
 
                 {/* Select Existing */}
                 {uploadMode === "existing" && (
-                  <div className="space-y-2 max-h-64 overflow-y-auto border border-border rounded-lg p-2">
+                  <div key="select-existing" className="space-y-2 max-h-64 overflow-y-auto border border-border rounded-lg p-2">
                     {blueprints.map((blueprint: Blueprint) => (
                       <button
                         key={blueprint.id}
@@ -571,7 +571,7 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                                       ...analysisResult.extractedItems!.map(
                                         (item) => [
                                           item.itemId,
-                                          `"${item.description}"`,
+                                          `"${item.description.replace(/"/g, '""')}"`,
                                           item.quantity.toFixed(2),
                                           `$${item.unitCost.toFixed(2)}`,
                                           `$${item.total.toFixed(2)}`,
@@ -603,8 +603,10 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                                       .map((row) => row.join(","))
                                       .join("\n");
 
-                                    const blob = new Blob([csv], {
-                                      type: "text/csv",
+                                    // Add UTF-8 BOM for proper encoding in Excel
+                                    const BOM = "\uFEFF";
+                                    const blob = new Blob([BOM + csv], {
+                                      type: "text/csv;charset=utf-8;",
                                     });
                                     const url =
                                       window.URL.createObjectURL(blob);
@@ -613,6 +615,7 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                                     a.download =
                                       "blueprint-analysis-budget.csv";
                                     a.click();
+                                    window.URL.revokeObjectURL(url);
                                   }}
                                 >
                                   Export CSV

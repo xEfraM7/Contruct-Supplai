@@ -3,15 +3,49 @@ import { openai } from "@/lib/openAI";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
+/**
+ * Helper function to clean up temporary files from Supabase Storage
+ */
+async function cleanupTempFile(fileUrl: string, uploadMode: string, context: string) {
+  if (uploadMode === "new" && fileUrl && fileUrl.includes("/temp/")) {
+    try {
+      console.log(`[CLEANUP_${context}] Eliminando archivo temporal de Supabase...`);
+      
+      const urlParts = fileUrl.split("/storage/v1/object/public/blueprints/");
+      if (urlParts.length === 2) {
+        const filePath = urlParts[1];
+        
+        const supabase = await createSupabaseServerClient();
+        const { error: deleteError } = await supabase.storage
+          .from("blueprints")
+          .remove([filePath]);
+
+        if (deleteError) {
+          console.warn(`[CLEANUP_${context}] Error:`, deleteError);
+        } else {
+          console.log(`[CLEANUP_${context}] Archivo eliminado:`, filePath);
+        }
+      }
+    } catch (cleanupError) {
+      console.warn(`[CLEANUP_${context}] Error:`, cleanupError);
+    }
+  }
+}
+
 export async function POST(req: NextRequest) {
+  let fileUrl = "";
+  let uploadMode = "";
+  
   try {
     console.log("[ANALYZE_BLUEPRINT] Iniciando análisis...");
 
     const body = await req.json();
-    const { fileUrl, fileName, prompt, category } = body;
+    const { fileUrl: url, fileName, prompt, category, uploadMode: mode } = body;
+    fileUrl = url;
+    uploadMode = mode || "existing";
 
     console.log("[ANALYZE_BLUEPRINT] Datos recibidos:", {
       fileName,
@@ -399,19 +433,28 @@ Use engineering judgment but do not guess or assume anything not visible in the 
     console.log("\n[ANALYZE_BLUEPRINT] Análisis completado.\n");
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // Limpieza de recursos
+    // Limpieza de recursos OpenAI
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     try {
       await openai.vectorStores.delete(vectorStore.id);
       await openai.files.delete(uploadedFile.id);
-      console.log("[ANALYZE_BLUEPRINT] Recursos eliminados.");
+      console.log("[CLEANUP] Recursos de OpenAI eliminados.");
     } catch (cleanupError) {
-      console.warn("[ANALYZE_BLUEPRINT] Error al limpiar recursos:", cleanupError);
+      console.warn("[CLEANUP] Error al limpiar recursos de OpenAI:", cleanupError);
     }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Limpieza de archivos temporales en Supabase
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    await cleanupTempFile(fileUrl, uploadMode, "SUCCESS");
 
     return NextResponse.json({ result });
   } catch (error: unknown) {
     console.error("[ANALYZE_BLUEPRINT_ERROR]:", error);
+    
+    // Limpieza de archivos temporales en caso de error
+    await cleanupTempFile(fileUrl, uploadMode, "ERROR");
+    
     const errorMessage =
       error instanceof Error ? error.message : "Error interno del servidor";
     const errorStack = error instanceof Error ? error.stack : undefined;
