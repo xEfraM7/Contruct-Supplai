@@ -12,6 +12,7 @@ import {
   Loader2,
   CheckCircle2,
   FileText,
+  FileSpreadsheet,
 } from "lucide-react";
 import {
   Dialog,
@@ -546,8 +547,7 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                                   </p>
                                 </div>
                                 <Button
-                                  variant="outline"
-                                  className="w-full sm:w-auto"
+                                  className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white"
                                   onClick={() => {
                                     const totalCostAvailable =
                                       analysisResult.totalCostAvailable || 0;
@@ -618,7 +618,8 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                                     window.URL.revokeObjectURL(url);
                                   }}
                                 >
-                                  Export CSV
+                                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                                  Export
                                 </Button>
                               </div>
                             </CardHeader>
