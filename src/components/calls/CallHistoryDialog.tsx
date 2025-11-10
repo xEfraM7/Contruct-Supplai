@@ -10,13 +10,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Loader2, RefreshCw, Phone, Clock } from "lucide-react";
 import { useCallHistoryDialog } from "@/hooks/useCallHistoryDialog";
+import { CallHistoryDialogProps } from "./types/call-types";
 
-interface CallHistoryDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  contactId: string;
-  contactName: string;
-}
+
 
 export function CallHistoryDialog({
   open,

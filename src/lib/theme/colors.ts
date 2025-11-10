@@ -16,12 +16,12 @@ export const themeColors = {
   // Status colors - using chart colors from shadcn theme
   status: {
     success: {
-      bg: "bg-chart-4/10",
-      text: "text-chart-4",
-      border: "border-chart-4/20",
-      badge: "bg-chart-4/10 text-chart-4 border-chart-4/20",
-      icon: "text-chart-4",
-      solid: "bg-chart-4",
+      bg: "bg-chart-2/10",
+      text: "text-chart-2",
+      border: "border-chart-2/20",
+      badge: "bg-chart-2/10 text-chart-4 border-chart-4/20",
+      icon: "text-chart-2",
+      solid: "bg-chart-2",
     },
     error: {
       bg: "bg-destructive/10",
@@ -40,12 +40,12 @@ export const themeColors = {
       solid: "bg-chart-5",
     },
     info: {
-      bg: "bg-chart-2/10",
-      text: "text-chart-2",
-      border: "border-chart-2/20",
-      badge: "bg-chart-2/10 text-chart-2 border-chart-2/20",
-      icon: "text-chart-2",
-      solid: "bg-chart-2",
+      bg: "bg-chart-4/10",
+      text: "text-chart-4",
+      border: "border-chart-4/20",
+      badge: "bg-chart-4/10 text-chart-4 border-chart-4/20",
+      icon: "text-chart-4",
+      solid: "bg-chart-4",
     },
   },
 
@@ -167,6 +167,12 @@ export const themeColors = {
       button:
         "bg-destructive hover:bg-destructive/90 text-destructive-foreground",
     },
+  },
+
+  // Sidebar navigation colors
+  sidebar: {
+    navActive: "bg-gray-200 dark:bg-sidebar-accent",
+    navHover: "hover:bg-sidebar-accent/80",
   },
 
   // Card backgrounds for different contexts

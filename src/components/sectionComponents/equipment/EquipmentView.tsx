@@ -4,15 +4,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { EquipmentStats } from "./EquipmentStats";
 import { EquipmentTable } from "./EquipmentTable";
 import { AddEquipmentModal } from "./AddEquipmentModal";
-import type { Equipment } from "@/types/equipment";
+import { EquipmentViewProps } from "./types/equipment-types";
 
-interface EquipmentViewProps {
-  equipment: Equipment[];
-  isLoading: boolean;
-  isModalOpen: boolean;
-  onOpenModal: (open: boolean) => void;
-  onEquipmentCreated: () => void;
-}
+
 
 export function EquipmentView({
   equipment,

@@ -19,15 +19,9 @@ import {
 import { Loader2 } from "lucide-react";
 import { useCreateCallDialog } from "@/hooks/useCreateCallDialog";
 import { useAgents } from "@/lib/hooks/use-agents";
+import { CreateCallDialogProps } from "./types/call-types";
 
-interface CreateCallDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  contactId: string;
-  contactName: string;
-  contactPhone: string;
-  onCallCreated?: () => void;
-}
+
 
 export function CreateCallDialog({
   open,

@@ -20,25 +20,7 @@ import { Progress } from "@/components/ui/progress";
 import { CreateProjectModal } from "@/components/modals/CreateProjectModal";
 import { themeColors } from "@/lib/theme";
 import { formatDate, getDateStatus } from "@/lib/utils/dateUtils";
-import type { Project } from "@/types/project";
-
-interface ProjectsViewProps {
-  projects: Project[];
-  isLoading: boolean;
-  metrics?: {
-    activeContracts: number;
-    totalBudget: number;
-    onTimeDelivery: number;
-  };
-  metricsLoading: boolean;
-  isModalOpen: boolean;
-  expandedProjects: Set<string>;
-  onOpenModal: (open: boolean) => void;
-  onToggleProject: (projectId: string, e?: React.MouseEvent) => void;
-  onDeleteClick: (project: Project, e: React.MouseEvent) => void;
-  calculateProgress: (project: Project) => number;
-  getStatusColor: (status?: string) => string;
-}
+import { ProjectsViewProps } from "./types/projects-types";
 
 export function ProjectsView({
   projects,
@@ -55,13 +37,18 @@ export function ProjectsView({
 }: ProjectsViewProps) {
   return (
     <section>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <h2 className="text-xl sm:text-2xl font-semibold text-foreground">
-          Dashboard Overview
-        </h2>
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-semibold text-foreground">
+            Dashboard Overview
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage your construction projects
+          </p>
+        </div>
         <Button
           onClick={() => onOpenModal(true)}
-          className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto"
+          className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-[140px] shrink-0"
         >
           <Plus className="w-4 h-4 mr-2" />
           New Project

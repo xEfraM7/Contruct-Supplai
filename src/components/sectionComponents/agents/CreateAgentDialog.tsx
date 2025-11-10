@@ -7,12 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCreateAgent } from '@/lib/hooks/use-agents';
-
-interface CreateAgentDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
-}
+import { CreateAgentDialogProps } from './types/agent-types';
 
 export function CreateAgentDialog({ open, onOpenChange, onSuccess }: CreateAgentDialogProps) {
   const createAgent = useCreateAgent();

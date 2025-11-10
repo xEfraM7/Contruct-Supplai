@@ -24,36 +24,87 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { useScheduleLogic } from "@/hooks/useScheduleLogic";
 import { EventFormDialog } from "./EventFormDialog";
 import { themeColors } from "@/lib/theme";
 
 const eventTypeConfig = {
-  meeting: { icon: Users, color: themeColors.eventTypes.meeting.solid, label: themeColors.eventTypes.meeting.label },
-  inspection: { icon: CheckCircle, color: themeColors.eventTypes.inspection.solid, label: themeColors.eventTypes.inspection.label },
-  delivery: { icon: Truck, color: themeColors.eventTypes.delivery.solid, label: themeColors.eventTypes.delivery.label },
+  meeting: {
+    icon: Users,
+    color: themeColors.eventTypes.meeting.solid,
+    label: themeColors.eventTypes.meeting.label,
+  },
+  inspection: {
+    icon: CheckCircle,
+    color: themeColors.eventTypes.inspection.solid,
+    label: themeColors.eventTypes.inspection.label,
+  },
+  delivery: {
+    icon: Truck,
+    color: themeColors.eventTypes.delivery.solid,
+    label: themeColors.eventTypes.delivery.label,
+  },
   milestone: {
     icon: AlertTriangle,
     color: themeColors.eventTypes.milestone.solid,
     label: themeColors.eventTypes.milestone.label,
   },
-  maintenance: { icon: Wrench, color: themeColors.eventTypes.maintenance.solid, label: themeColors.eventTypes.maintenance.label },
-  safety: { icon: AlertTriangle, color: themeColors.eventTypes.safety.solid, label: themeColors.eventTypes.safety.label },
+  maintenance: {
+    icon: Wrench,
+    color: themeColors.eventTypes.maintenance.solid,
+    label: themeColors.eventTypes.maintenance.label,
+  },
+  safety: {
+    icon: AlertTriangle,
+    color: themeColors.eventTypes.safety.solid,
+    label: themeColors.eventTypes.safety.label,
+  },
 };
 
 const priorityConfig = {
-  low: { color: themeColors.priority.low.solid, label: themeColors.priority.low.label },
-  medium: { color: themeColors.priority.medium.solid, label: themeColors.priority.medium.label },
-  high: { color: themeColors.priority.high.solid, label: themeColors.priority.high.label },
-  critical: { color: themeColors.priority.critical.solid, label: themeColors.priority.critical.label },
+  low: {
+    color: themeColors.priority.low.solid,
+    label: themeColors.priority.low.label,
+  },
+  medium: {
+    color: themeColors.priority.medium.solid,
+    label: themeColors.priority.medium.label,
+  },
+  high: {
+    color: themeColors.priority.high.solid,
+    label: themeColors.priority.high.label,
+  },
+  critical: {
+    color: themeColors.priority.critical.solid,
+    label: themeColors.priority.critical.label,
+  },
 };
 
 const statusConfig = {
-  scheduled: { color: themeColors.scheduleStatus.scheduled.solid, label: themeColors.scheduleStatus.scheduled.label },
-  "in-progress": { color: themeColors.scheduleStatus["in-progress"].solid, label: themeColors.scheduleStatus["in-progress"].label },
-  completed: { color: themeColors.scheduleStatus.completed.solid, label: themeColors.scheduleStatus.completed.label },
-  cancelled: { color: themeColors.scheduleStatus.cancelled.solid, label: themeColors.scheduleStatus.cancelled.label },
+  scheduled: {
+    color: themeColors.scheduleStatus.scheduled.solid,
+    label: themeColors.scheduleStatus.scheduled.label,
+  },
+  "in-progress": {
+    color: themeColors.scheduleStatus["in-progress"].solid,
+    label: themeColors.scheduleStatus["in-progress"].label,
+  },
+  completed: {
+    color: themeColors.scheduleStatus.completed.solid,
+    label: themeColors.scheduleStatus.completed.label,
+  },
+  cancelled: {
+    color: themeColors.scheduleStatus.cancelled.solid,
+    label: themeColors.scheduleStatus.cancelled.label,
+  },
 };
 
 const monthNames = [
@@ -77,7 +128,7 @@ export default function ScheduleMainComponent() {
 
   return (
     <section>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
         <div>
           <h2 className="text-xl sm:text-2xl font-semibold text-foreground">
             Construction Schedule
@@ -86,15 +137,13 @@ export default function ScheduleMainComponent() {
             Manage events, inspections, and project deliveries
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            className="bg-white text-black border-gray-300 hover:bg-gray-50 border"
-            onClick={() => logic.setIsAddEventOpen(true)}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            New Event
-          </Button>
-        </div>
+        <Button
+          className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-[140px] shrink-0"
+          onClick={() => logic.setIsAddEventOpen(true)}
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          New Event
+        </Button>
       </div>
 
       {/* Event Form Dialogs */}
@@ -132,48 +181,98 @@ export default function ScheduleMainComponent() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendar View */}
         <Card className="lg:col-span-2 bg-card border-border">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-card-foreground flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              {monthNames[logic.currentDate.getMonth()]}{" "}
-              {logic.currentDate.getFullYear()}
-            </CardTitle>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  logic.setCurrentDate(
-                    new Date(
-                      logic.currentDate.getFullYear(),
-                      logic.currentDate.getMonth() - 1
+          <CardHeader>
+            <div className="flex flex-col gap-4">
+              {/* Title and Navigation */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <CardTitle className="text-card-foreground flex items-center gap-2">
+                  <Calendar className="w-5 h-5" />
+                  Calendar
+                </CardTitle>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      logic.setCurrentDate(
+                        new Date(
+                          logic.currentDate.getFullYear(),
+                          logic.currentDate.getMonth() - 1
+                        )
+                      )
+                    }
+                  >
+                    ←
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => logic.setCurrentDate(new Date())}
+                  >
+                    Today
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      logic.setCurrentDate(
+                        new Date(
+                          logic.currentDate.getFullYear(),
+                          logic.currentDate.getMonth() + 1
+                        )
+                      )
+                    }
+                  >
+                    →
+                  </Button>
+                </div>
+              </div>
+
+              {/* Month and Year Selectors */}
+              <div className="flex flex-wrap gap-2 items-center">
+                <span className="text-sm text-muted-foreground">View:</span>
+                <Select
+                  value={logic.currentDate.getMonth().toString()}
+                  onValueChange={(value) =>
+                    logic.setCurrentDate(
+                      new Date(logic.currentDate.getFullYear(), parseInt(value))
                     )
-                  )
-                }
-              >
-                ←
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => logic.setCurrentDate(new Date())}
-              >
-                Today
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  logic.setCurrentDate(
-                    new Date(
-                      logic.currentDate.getFullYear(),
-                      logic.currentDate.getMonth() + 1
+                  }
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {monthNames.map((month, index) => (
+                      <SelectItem key={month} value={index.toString()}>
+                        {month}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={logic.currentDate.getFullYear().toString()}
+                  onValueChange={(value) =>
+                    logic.setCurrentDate(
+                      new Date(parseInt(value), logic.currentDate.getMonth())
                     )
-                  )
-                }
-              >
-                →
-              </Button>
+                  }
+                >
+                  <SelectTrigger className="w-[100px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 101 }, (_, i) => {
+                      const year = 2000 + i;
+                      return (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -480,7 +579,9 @@ export default function ScheduleMainComponent() {
                 <p className="text-sm text-muted-foreground mb-1">
                   Overdue Tasks
                 </p>
-                <p className={`text-3xl font-bold ${themeColors.status.error.text}`}>
+                <p
+                  className={`text-3xl font-bold ${themeColors.status.error.text}`}
+                >
                   {logic.overdueTasks.length}
                 </p>
                 <p className="text-xs mt-2 text-muted-foreground">
@@ -489,8 +590,12 @@ export default function ScheduleMainComponent() {
                     : "Need attention"}
                 </p>
               </div>
-              <div className={`w-12 h-12 rounded-lg ${themeColors.status.error.bg} flex items-center justify-center`}>
-                <AlertTriangle className={`w-6 h-6 ${themeColors.status.error.icon}`} />
+              <div
+                className={`w-12 h-12 rounded-lg ${themeColors.status.error.bg} flex items-center justify-center`}
+              >
+                <AlertTriangle
+                  className={`w-6 h-6 ${themeColors.status.error.icon}`}
+                />
               </div>
             </div>
           </CardContent>
@@ -503,15 +608,21 @@ export default function ScheduleMainComponent() {
                 <p className="text-sm text-muted-foreground mb-1">
                   Inspections
                 </p>
-                <p className={`text-3xl font-bold ${themeColors.status.success.text}`}>
+                <p
+                  className={`text-3xl font-bold ${themeColors.status.success.text}`}
+                >
                   {logic.events.filter((e) => e.type === "inspection").length}
                 </p>
                 <p className="text-xs mt-2 text-muted-foreground">
                   Scheduled this month
                 </p>
               </div>
-              <div className={`w-12 h-12 rounded-lg ${themeColors.status.success.bg} flex items-center justify-center`}>
-                <CheckCircle className={`w-6 h-6 ${themeColors.status.success.icon}`} />
+              <div
+                className={`w-12 h-12 rounded-lg ${themeColors.status.success.bg} flex items-center justify-center`}
+              >
+                <CheckCircle
+                  className={`w-6 h-6 ${themeColors.status.success.icon}`}
+                />
               </div>
             </div>
           </CardContent>

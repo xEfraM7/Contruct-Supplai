@@ -14,12 +14,7 @@ import { Button } from "@/components/ui/button";
 import { FormInput, FormTextarea, FormDateInput } from "@/components/form";
 import { projectSchema, type ProjectFormData } from "@/lib/validations/project";
 import { useCreateProject } from "@/lib/hooks/use-projects";
-
-interface CreateProjectModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onProjectCreated?: () => void;
-}
+import { CreateProjectModalProps } from "./types/modal-types";
 
 export function CreateProjectModal({
   open,
