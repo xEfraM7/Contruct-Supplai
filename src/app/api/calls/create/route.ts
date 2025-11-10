@@ -21,17 +21,26 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const {
-      from_number,
       to_number,
       agent_id,
       contact_id,
       metadata = {},
     } = body;
 
-    if (!from_number || !to_number || !agent_id) {
+    if (!to_number || !agent_id) {
       return NextResponse.json(
-        { error: "from_number, to_number, and agent_id are required" },
+        { error: "to_number and agent_id are required" },
         { status: 400 }
+      );
+    }
+
+    // Get from_number from environment variable
+    const from_number = process.env.RETELL_PHONE_NUMBER;
+    
+    if (!from_number) {
+      return NextResponse.json(
+        { error: "RETELL_PHONE_NUMBER not configured in environment" },
+        { status: 500 }
       );
     }
 

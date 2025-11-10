@@ -1,19 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { useProjects, useDeleteProject } from "@/lib/hooks/use-projects";
+import { useProjects, useDeleteProject, useUpdateProjectStatus } from "@/lib/hooks/use-projects";
 import { useDashboardMetrics } from "@/lib/hooks/use-dashboard-metrics";
 import { useConfirm } from "@/hooks/use-confirm";
 import type { ProjectWithDetails } from "@/types/project";
 
+type ViewMode = "list" | "kanban";
+
 export function useProjectsLogic() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
   const { confirm, ConfirmDialog } = useConfirm();
 
   const { data: metrics, isLoading: metricsLoading } = useDashboardMetrics();
   const { data: projects = [], isLoading } = useProjects();
   const deleteProject = useDeleteProject();
+  const updateProjectStatus = useUpdateProjectStatus();
 
   const toggleProject = (projectId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -70,13 +74,23 @@ export function useProjectsLogic() {
     switch (status) {
       case "completed":
         return "bg-green-100 text-green-800";
+      case "on-hold":
       case "on_hold":
         return "bg-yellow-100 text-yellow-800";
       case "cancelled":
         return "bg-red-100 text-red-800";
+      case "planning":
+        return "bg-blue-100 text-blue-800";
       default:
         return "bg-blue-100 text-blue-800";
     }
+  };
+
+  const handleStatusChange = (projectId: string, newStatus: string) => {
+    updateProjectStatus.mutate({
+      id: projectId,
+      status: newStatus,
+    });
   };
 
   return {
@@ -87,8 +101,11 @@ export function useProjectsLogic() {
     isModalOpen,
     setIsModalOpen,
     expandedProjects,
+    viewMode,
+    setViewMode,
     toggleProject,
     handleDeleteClick,
+    handleStatusChange,
     calculateProgress,
     getStatusColor,
     ConfirmDialog,

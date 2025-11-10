@@ -12,8 +12,8 @@ export const projectSchema = z.object({
   project_manager_id: z.string().uuid("Invalid project manager").optional(),
   
   // Dates
-  start_date: z.string().optional(),
-  estimated_end_date: z.string().optional(),
+  start_date: z.string().min(1, "Start date is required"),
+  estimated_end_date: z.string().min(1, "Estimated end date is required"),
   actual_end_date: z.string().optional(),
   
   // Budget

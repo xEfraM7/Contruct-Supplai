@@ -191,6 +191,7 @@ export function CreateProjectModal({
               <FormDateInput
                 id="startDate"
                 label="Start Date"
+                required
                 error={errors.start_date?.message}
                 disabled={isSubmitting}
                 {...register("start_date")}
@@ -199,6 +200,7 @@ export function CreateProjectModal({
               <FormDateInput
                 id="estimatedEndDate"
                 label="Estimated End Date"
+                required
                 error={errors.estimated_end_date?.message}
                 disabled={isSubmitting}
                 {...register("estimated_end_date")}

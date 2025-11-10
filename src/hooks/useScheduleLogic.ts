@@ -5,12 +5,12 @@ import { type ConstructionEvent } from "@/lib/actions/schedule-actions";
 import { toast } from "sonner";
 import { useConfirm } from "@/hooks/use-confirm";
 import {
-  useEvents,
   useCreateEvent,
   useUpdateEvent,
   useDeleteEvent,
   useUpdateEventStatus,
 } from "@/lib/hooks/use-schedule";
+import { useIntegratedSchedule } from "@/hooks/useIntegratedSchedule";
 
 interface EventFormData {
   title: string;
@@ -27,13 +27,11 @@ interface EventFormData {
 }
 
 export function useScheduleLogic() {
-  const { data: eventsData, isLoading } = useEvents();
+  const { events, isLoading, scheduleEventsCount, projectMilestonesCount } = useIntegratedSchedule();
   const createEventMutation = useCreateEvent();
   const updateEventMutation = useUpdateEvent();
   const deleteEventMutation = useDeleteEvent();
   const updateEventStatusMutation = useUpdateEventStatus();
-
-  const events = eventsData || [];
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -280,6 +278,8 @@ export function useScheduleLogic() {
     thisWeekEvents,
     overdueTasks,
     todayString,
+    scheduleEventsCount,
+    projectMilestonesCount,
     ConfirmDialog,
 
     // Actions

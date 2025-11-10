@@ -94,6 +94,61 @@ export function useUpdateProject() {
   });
 }
 
+// Update project status with optimistic updates (for Kanban)
+export function useUpdateProjectStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const response = await fetch(`/api/projects/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update project status");
+      }
+
+      return response.json();
+    },
+    // Optimistic update
+    onMutate: async ({ id, status }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["projects"] });
+
+      // Snapshot the previous value
+      const previousProjects = queryClient.getQueryData<ProjectWithDetails[]>(["projects"]);
+
+      // Optimistically update to the new value
+      if (previousProjects) {
+        queryClient.setQueryData<ProjectWithDetails[]>(
+          ["projects"],
+          previousProjects.map((project) =>
+            project.id === id ? { ...project, status } : project
+          )
+        );
+      }
+
+      // Return a context object with the snapshotted value
+      return { previousProjects };
+    },
+    // If the mutation fails, use the context returned from onMutate to roll back
+    onError: (error: Error, _variables, context) => {
+      if (context?.previousProjects) {
+        queryClient.setQueryData(["projects"], context.previousProjects);
+      }
+      toast.error(error.message);
+    },
+    // Always refetch after error or success to ensure we have the latest data
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"] });
+    },
+  });
+}
+
 // Delete project
 export function useDeleteProject() {
   const queryClient = useQueryClient();

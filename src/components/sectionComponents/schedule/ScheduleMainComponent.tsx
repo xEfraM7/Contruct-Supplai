@@ -34,7 +34,10 @@ import {
 
 import { useScheduleLogic } from "@/hooks/useScheduleLogic";
 import { EventFormDialog } from "./EventFormDialog";
+import { GanttTimeline } from "./GanttTimeline";
 import { themeColors } from "@/lib/theme";
+import { useState } from "react";
+import { LayoutList, LayoutGrid } from "lucide-react";
 
 const eventTypeConfig = {
   meeting: {
@@ -125,6 +128,7 @@ const monthNames = [
 export default function ScheduleMainComponent() {
   const logic = useScheduleLogic();
   const calendarDays = logic.generateCalendar();
+  const [viewMode, setViewMode] = useState<"calendar" | "gantt">("calendar");
 
   return (
     <section>
@@ -134,16 +138,46 @@ export default function ScheduleMainComponent() {
             Construction Schedule
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage events, inspections, and project deliveries
+            {logic.scheduleEventsCount} manual events • {logic.projectMilestonesCount} project milestones
           </p>
         </div>
-        <Button
-          className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-[140px] shrink-0"
-          onClick={() => logic.setIsAddEventOpen(true)}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          New Event
-        </Button>
+        <div className="flex gap-3 flex-wrap sm:flex-nowrap items-center">
+          <div className="inline-flex items-center gap-1 border border-border rounded-lg p-1 bg-muted/50 shadow-sm h-11">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setViewMode("calendar")}
+              className={`h-9 px-4 transition-all ${
+                viewMode === "calendar" 
+                  ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90" 
+                  : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4 mr-2" />
+              <span className="font-medium">Calendar</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setViewMode("gantt")}
+              className={`h-9 px-4 transition-all ${
+                viewMode === "gantt" 
+                  ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90" 
+                  : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <LayoutList className="w-4 h-4 mr-2" />
+              <span className="font-medium">Gantt</span>
+            </Button>
+          </div>
+          <Button
+            className="h-11 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm transition-all"
+            onClick={() => logic.setIsAddEventOpen(true)}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            New Event
+          </Button>
+        </div>
       </div>
 
       {/* Event Form Dialogs */}
@@ -178,9 +212,18 @@ export default function ScheduleMainComponent() {
       />
 
       {/* Schedule Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Calendar View */}
-        <Card className="lg:col-span-2 bg-card border-border">
+      {viewMode === "gantt" ? (
+        <GanttTimeline
+          events={logic.events}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onEditEvent={(event) => logic.openEditDialog(event as any)}
+          onDeleteEvent={logic.handleDeleteEvent}
+          onStatusChange={logic.handleStatusChange}
+        />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Calendar View */}
+          <Card className="lg:col-span-2 bg-card border-border">
           <CardHeader>
             <div className="flex flex-col gap-4">
               {/* Title and Navigation */}
@@ -524,7 +567,31 @@ export default function ScheduleMainComponent() {
             </div>
           </CardContent>
         </Card>
-      </div>
+          </div>
+        )}
+
+      {/* Integration Info */}
+      {logic.projectMilestonesCount > 0 && (
+        <Card className="bg-primary/5 border-primary/20 mt-6">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Calendar className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-semibold text-sm text-card-foreground mb-1">
+                  📊 Integrated Schedule
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  This schedule automatically includes important dates from your projects:
+                  <span className="font-medium text-foreground"> Start dates, Deadlines, and Milestones</span>.
+                  Auto-generated events are marked with emojis (📅 🎯 ✅ 🎉).
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
