@@ -1,23 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-
-interface Project {
-  id: string;
-  name: string;
-  clientName?: string;
-  address: string;
-  clientPhone?: string;
-  clientEmail?: string;
-  startDate?: string;
-  estimatedEndDate?: string;
-  estimatedBudget?: number;
-  description?: string;
-  status?: string;
-  completionPercentage?: number;
-  actualEndDate?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import type { Project, ProjectWithDetails } from "@/types/project";
 
 // Fetch projects
 export function useProjects() {
@@ -29,7 +12,7 @@ export function useProjects() {
         throw new Error("Failed to fetch projects");
       }
       const data = await response.json();
-      return data.projects as Project[];
+      return data.projects as ProjectWithDetails[];
     },
   });
 }

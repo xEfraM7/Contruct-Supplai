@@ -42,7 +42,7 @@ SupplAI is a comprehensive construction management platform that leverages artif
 
 ### 🤖 AI Blueprint Analysis
 - Upload PDF blueprints for automated analysis
-- GPT-4o powered technical review
+- GPT-5 powered technical review
 - Automatic quantity takeoffs
 - Cost estimation based on inventory
 - Discrepancy detection

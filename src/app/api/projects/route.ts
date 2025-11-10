@@ -33,10 +33,14 @@ export async function GET() {
       );
     }
 
-    // Obtener proyectos del usuario
+    // Obtener proyectos del usuario con datos relacionados
     const { data: projects, error } = await supabase
       .from('project')
-      .select('*')
+      .select(`
+        *,
+        clients(id, company_name, company_email, company_phone),
+        project_manager:contacts!project_manager_id(id, name, email, role)
+      `)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
@@ -52,17 +56,36 @@ export async function GET() {
       projects: projects.map(p => ({
         id: p.id,
         name: p.name,
-        clientName: p.client_name,
         address: p.address,
-        clientPhone: p.client_phone,
-        clientEmail: p.client_email,
+        description: p.description,
+        
+        // Client data (new)
+        client_id: p.client_id,
+        client: p.clients,
+        
+        // Project Manager (new)
+        project_manager_id: p.project_manager_id,
+        project_manager: p.project_manager,
+        
+        // Legacy fields (for backward compatibility)
+        clientName: p.client_name || p.clients?.company_name,
+        clientPhone: p.client_phone || p.clients?.company_phone,
+        clientEmail: p.client_email || p.clients?.company_email,
+        
+        // Dates
         startDate: p.start_date,
         estimatedEndDate: p.estimated_end_date,
+        actualEndDate: p.actual_end_date,
+        
+        // Budget
         estimatedBudget: p.estimated_budget,
-        description: p.description,
+        actual_cost: p.actual_cost,
+        
+        // Progress
         status: p.status,
         completionPercentage: p.completion_percentage,
-        actualEndDate: p.actual_end_date,
+        
+        // Timestamps
         createdAt: p.created_at,
         updatedAt: p.updated_at,
       })),
@@ -77,17 +100,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { 
-      name, 
-      client_name, 
-      address, 
-      client_phone, 
-      client_email, 
-      start_date, 
-      estimated_end_date,
-      estimated_budget, 
-      description 
-    } = await request.json();
+    const body = await request.json();
     const cookieStore = await cookies();
 
     const supabase = createServerClient(
@@ -117,19 +130,21 @@ export async function POST(request: Request) {
       );
     }
 
-    // Crear proyecto - convertir campos vacíos a null
+    // Crear proyecto
     const { data: project, error } = await supabase
       .from('project')
       .insert({
-        name,
-        client_name,
-        address,
-        client_phone: client_phone || null,
-        client_email: client_email || null,
-        start_date: start_date || null,
-        estimated_end_date: estimated_end_date || null,
-        estimated_budget: estimated_budget ? Number(estimated_budget) : null,
-        description: description || null,
+        name: body.name,
+        address: body.address,
+        description: body.description || null,
+        client_id: body.client_id || null,
+        project_manager_id: body.project_manager_id || null,
+        start_date: body.start_date || null,
+        estimated_end_date: body.estimated_end_date || null,
+        estimated_budget: body.estimated_budget || null,
+        status: body.status || 'active',
+        completion_percentage: 0,
+        actual_cost: 0,
         user_id: user.id,
       })
       .select()

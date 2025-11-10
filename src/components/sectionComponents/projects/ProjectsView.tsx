@@ -7,8 +7,6 @@ import {
   Plus,
   Trash2,
   User,
-  Phone,
-  Mail,
   Calendar,
   DollarSign as Budget,
   ChevronDown,
@@ -215,7 +213,8 @@ export function ProjectsView({
                       {isExpanded && (
                         <>
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 pt-4 border-t border-border">
-                            {project.clientName && (
+                            {/* Client Information */}
+                            {(project.client || project.clientName) && (
                               <div className="flex items-center gap-2 text-sm">
                                 <User className="w-4 h-4 text-muted-foreground" />
                                 <div>
@@ -223,36 +222,38 @@ export function ProjectsView({
                                     Client
                                   </p>
                                   <p className="font-medium text-card-foreground">
-                                    {project.clientName}
+                                    {project.client?.company_name || project.clientName}
                                   </p>
+                                  {project.client?.company_email && (
+                                    <p className="text-xs text-muted-foreground">
+                                      {project.client.company_email}
+                                    </p>
+                                  )}
+                                  {project.client?.company_phone && (
+                                    <p className="text-xs text-muted-foreground">
+                                      {project.client.company_phone}
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                             )}
 
-                            {project.clientPhone && (
+                            {/* Project Manager Information */}
+                            {project.project_manager && (
                               <div className="flex items-center gap-2 text-sm">
-                                <Phone className="w-4 h-4 text-muted-foreground" />
+                                <User className="w-4 h-4 text-primary" />
                                 <div>
                                   <p className="text-xs text-muted-foreground">
-                                    Phone
+                                    Project Manager
                                   </p>
                                   <p className="font-medium text-card-foreground">
-                                    {project.clientPhone}
+                                    {project.project_manager.name}
                                   </p>
-                                </div>
-                              </div>
-                            )}
-
-                            {project.clientEmail && (
-                              <div className="flex items-center gap-2 text-sm">
-                                <Mail className="w-4 h-4 text-muted-foreground" />
-                                <div>
-                                  <p className="text-xs text-muted-foreground">
-                                    Email
-                                  </p>
-                                  <p className="font-medium text-card-foreground truncate">
-                                    {project.clientEmail}
-                                  </p>
+                                  {project.project_manager.email && (
+                                    <p className="text-xs text-muted-foreground">
+                                      {project.project_manager.email}
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                             )}
@@ -303,14 +304,37 @@ export function ProjectsView({
                                 <Budget className="w-4 h-4 text-muted-foreground" />
                                 <div>
                                   <p className="text-xs text-muted-foreground">
-                                    Budget
+                                    Estimated Budget
                                   </p>
                                   <p className="font-medium text-card-foreground">
-                                    $
-                                    {Number(
-                                      project.estimatedBudget
-                                    ).toLocaleString()}
+                                    ${Number(project.estimatedBudget).toLocaleString()}
                                   </p>
+                                </div>
+                              </div>
+                            )}
+
+                            {project.actual_cost !== undefined && project.actual_cost > 0 && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <DollarSign className="w-4 h-4 text-muted-foreground" />
+                                <div>
+                                  <p className="text-xs text-muted-foreground">
+                                    Actual Cost
+                                  </p>
+                                  <p className="font-medium text-card-foreground">
+                                    ${Number(project.actual_cost).toLocaleString()}
+                                  </p>
+                                  {project.estimatedBudget && (
+                                    <p className={`text-xs ${
+                                      project.actual_cost > project.estimatedBudget 
+                                        ? 'text-red-600' 
+                                        : 'text-green-600'
+                                    }`}>
+                                      {project.actual_cost > project.estimatedBudget 
+                                        ? `$${(project.actual_cost - project.estimatedBudget).toLocaleString()} over`
+                                        : `$${(project.estimatedBudget - project.actual_cost).toLocaleString()} remaining`
+                                      }
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                             )}

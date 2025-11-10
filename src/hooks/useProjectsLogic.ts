@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useProjects, useDeleteProject } from "@/lib/hooks/use-projects";
 import { useDashboardMetrics } from "@/lib/hooks/use-dashboard-metrics";
 import { useConfirm } from "@/hooks/use-confirm";
-import type { Project } from "@/types/project";
+import type { ProjectWithDetails } from "@/types/project";
 
 export function useProjectsLogic() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,7 +28,7 @@ export function useProjectsLogic() {
     });
   };
 
-  const handleDeleteClick = async (project: Project, e: React.MouseEvent) => {
+  const handleDeleteClick = async (project: ProjectWithDetails, e: React.MouseEvent) => {
     e.stopPropagation();
 
     const confirmed = await confirm({
@@ -44,7 +44,7 @@ export function useProjectsLogic() {
     }
   };
 
-  const calculateProgress = (project: Project): number => {
+  const calculateProgress = (project: ProjectWithDetails): number => {
     if (project.completionPercentage !== undefined && project.completionPercentage > 0) {
       return project.completionPercentage;
     }
