@@ -79,7 +79,7 @@ export function TeamProductivityMetrics() {
         </div>
 
         {/* Team Members */}
-        <div className="space-y-4 max-h-[280px] overflow-y-auto pr-2">
+        <div className="space-y-4 max-h-[280px] overflow-y-auto custom-scrollbar pr-2">
           {teamMetrics.slice(0, 8).map((member) => (
             <div key={member.id} className="space-y-2">
               <div className="flex items-start justify-between gap-2">

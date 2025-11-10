@@ -48,7 +48,7 @@ export function CallHistoryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto custom-scrollbar">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>Call History - {contactName}</DialogTitle>

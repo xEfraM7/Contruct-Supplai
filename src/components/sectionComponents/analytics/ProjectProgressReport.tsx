@@ -57,7 +57,7 @@ export function ProjectProgressReport() {
         </p>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+        <div className="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
           {activeProjects.map((project) => (
             <div key={project.id} className="space-y-2">
               <div className="flex items-start justify-between gap-2">

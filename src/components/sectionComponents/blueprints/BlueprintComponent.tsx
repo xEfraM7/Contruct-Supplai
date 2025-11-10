@@ -359,7 +359,7 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
 
                 {/* Select Existing */}
                 {uploadMode === "existing" && (
-                  <div key="select-existing" className="space-y-2 max-h-64 overflow-y-auto border border-border rounded-lg p-2">
+                  <div key="select-existing" className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar border border-border rounded-lg p-2">
                     {blueprints.map((blueprint: Blueprint) => (
                       <button
                         key={blueprint.id}
@@ -624,7 +624,7 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                               </div>
                             </CardHeader>
                             <CardContent>
-                              <div className="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0">
+                              <div className="overflow-x-auto custom-scrollbar -mx-6 px-6 sm:mx-0 sm:px-0">
                                 <table className="w-full min-w-[700px]">
                                   <thead>
                                     <tr className="border-b border-border">

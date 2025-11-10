@@ -114,7 +114,7 @@ export function RiskIdentificationPanel() {
         </div>
 
         {/* Risk List */}
-        <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+        <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
           {risks.map((risk) => {
             const config = severityConfig[risk.severity]
             const SeverityIcon = config.icon
