@@ -1,2 +1,6 @@
-// Export analytics component
-export { AnalyticsComponent } from "./AnalyticsComponent";
+export { AnalyticsComponent } from "./AnalyticsComponent"
+export { AnalyticsSummary } from "./AnalyticsSummary"
+export { BudgetTrackingChart } from "./BudgetTrackingChart"
+export { ProjectProgressReport } from "./ProjectProgressReport"
+export { TeamProductivityMetrics } from "./TeamProductivityMetrics"
+export { RiskIdentificationPanel } from "./RiskIdentificationPanel"
