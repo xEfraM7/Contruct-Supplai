@@ -39,6 +39,9 @@ import { useClient, useDeleteClient } from "@/lib/hooks/use-clients";
 import { useContacts, useCreateContact, useDeleteContact } from "@/lib/hooks/use-contacts";
 import { CreateCallDialog } from "@/components/calls/CreateCallDialog";
 import { CallHistoryDialog } from "@/components/calls/CallHistoryDialog";
+import { ContactProfileDialog } from "./ContactProfileDialog";
+import { ContactStatsCards } from "./ContactStatsCards";
+import { ContactWorkloadChart } from "./ContactWorkloadChart";
 import { themeColors } from "@/lib/theme";
 import type { Contact } from "@/types/contact";
 
@@ -62,6 +65,7 @@ export function ClientDetailComponent() {
   });
   const [selectedContactForCall, setSelectedContactForCall] = useState<Contact | null>(null);
   const [selectedContactForHistory, setSelectedContactForHistory] = useState<Contact | null>(null);
+  const [selectedContactForProfile, setSelectedContactForProfile] = useState<Contact | null>(null);
 
   const handleAddContact = async () => {
     if (!contactForm.name || !contactForm.phone) {
@@ -130,6 +134,14 @@ export function ClientDetailComponent() {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Clients
         </Button>
+      </div>
+
+      {/* Stats Cards */}
+      <ContactStatsCards clientId={clientId} />
+
+      {/* Workload Chart */}
+      <div className="my-6">
+        <ContactWorkloadChart clientId={clientId} />
       </div>
 
       {/* Client Info Card */}
@@ -273,9 +285,27 @@ export function ClientDetailComponent() {
                           {contact.position}
                         </p>
                       )}
+                      {contact.role && (
+                        <Badge variant="secondary" className="mt-2 text-xs">
+                          {contact.role.replace('_', ' ')}
+                        </Badge>
+                      )}
+                      {contact.hourly_rate && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          ${contact.hourly_rate}/hr
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedContactForProfile(contact)}
+                    >
+                      <User className="w-4 h-4 mr-2" />
+                      Profile
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -299,6 +329,10 @@ export function ClientDetailComponent() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setSelectedContactForProfile(contact)}>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit Profile
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleDeleteContact(contact.id)}
                           className={themeColors.interactive.delete.text}
@@ -410,6 +444,16 @@ export function ClientDetailComponent() {
           onOpenChange={(open) => !open && setSelectedContactForHistory(null)}
           contactId={selectedContactForHistory.id}
           contactName={selectedContactForHistory.name}
+        />
+      )}
+
+      {/* Contact Profile Dialog */}
+      {selectedContactForProfile && (
+        <ContactProfileDialog
+          open={!!selectedContactForProfile}
+          onOpenChange={(open) => !open && setSelectedContactForProfile(null)}
+          contact={selectedContactForProfile}
+          clientId={clientId}
         />
       )}
     </section>
