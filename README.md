@@ -101,7 +101,7 @@ SupplAI is a comprehensive construction management platform that leverages artif
 - **Database**: Supabase (PostgreSQL)
 - **Authentication**: Better Auth + Supabase Auth
 - **File Storage**: Supabase Storage
-- **AI**: OpenAI GPT-4o with Assistants API
+- **AI**: OpenAI GPT-5 with Assistants API
 
 ### DevOps & Tools
 - **Package Manager**: npm
@@ -196,7 +196,7 @@ RETELL_PHONE_NUMBER=+1234567890
 2. Sign up or log in
 3. Navigate to API Keys section
 4. Create a new secret key
-5. Ensure you have GPT-4 access
+5. Ensure you have GPT-5 access
 
 #### Supabase
 1. Create account at [Supabase](https://supabase.com/)
@@ -400,7 +400,7 @@ supplai/
 
 **Endpoint**: `POST /api/analyze-blueprints`
 
-**Description**: Analyzes a construction blueprint using OpenAI GPT-4o and returns structured technical report.
+**Description**: Analyzes a construction blueprint using OpenAI GPT-5 and returns structured technical report.
 
 **Request Body**:
 ```json
@@ -455,7 +455,7 @@ supplai/
 
 ### AI Blueprint Analysis
 
-The blueprint analysis feature uses OpenAI's GPT-4o model with the Assistants API to:
+The blueprint analysis feature uses OpenAI's GPT-5 model with the Assistants API to:
 
 1. **Upload & Process**: PDFs are uploaded to Supabase Storage and then to OpenAI
 2. **Inventory Matching**: The AI receives your equipment inventory as JSON
