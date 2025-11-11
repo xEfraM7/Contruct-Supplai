@@ -1,4 +1,4 @@
-import type { Project, ProjectWithDetails } from "@/types/project";
+import type { ProjectWithDetails } from "@/types/project";
 
 export interface ProjectsViewProps {
   projects: ProjectWithDetails[];

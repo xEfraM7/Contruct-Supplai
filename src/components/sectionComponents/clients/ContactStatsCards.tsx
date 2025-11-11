@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, UserCheck, Clock, ListTodo } from 'lucide-react';
+import { Users, UserCheck, ListTodo } from 'lucide-react';
 import { useContacts } from '@/lib/hooks/use-contacts';
 import { useContactWorkload } from '@/lib/hooks/use-contacts';
 
@@ -17,7 +17,7 @@ export function ContactStatsCards({ clientId }: ContactStatsCardsProps) {
     total: contacts.length,
     active: contacts.filter(c => c.status === 'active').length,
     withRole: contacts.filter(c => c.role).length,
-    activeTasks: workload.reduce((sum, w) => sum + w.active_tasks, 0),
+    activeTasks: workload.reduce((sum: number, w: { active_tasks: number }) => sum + w.active_tasks, 0),
   };
 
   return (

@@ -1,6 +1,6 @@
 export { ProjectProgressCard } from './ProjectProgressCard';
 export { ProjectBudgetCard } from './ProjectBudgetCard';
-export { ProjectsMainComponent } from './ProjectsMainComponent';
+export { default as ProjectsMainComponent } from './ProjectsMainComponent';
 export { ProjectsView } from './ProjectsView';
 export { KanbanBoard } from './KanbanBoard';
 export { KanbanColumn } from './KanbanColumn';
