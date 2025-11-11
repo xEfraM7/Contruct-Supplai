@@ -3,7 +3,7 @@ import { openai } from "@/lib/openAI";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
 /**

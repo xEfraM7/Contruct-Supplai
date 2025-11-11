@@ -63,12 +63,26 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (existingSession) {
-      console.log("[CHAT_INIT] Sesión existente encontrada");
-      return NextResponse.json({
-        session_id: existingSession.id,
-        conversation_id: existingSession.conversation_id,
-        is_new: false,
-      });
+      console.log("[CHAT_INIT] Sesión existente encontrada, reutilizando");
+      
+      // Verificar que los recursos de OpenAI aún existen
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (openai as any).conversations.retrieve(existingSession.conversation_id);
+        
+        return NextResponse.json({
+          session_id: existingSession.id,
+          conversation_id: existingSession.conversation_id,
+          is_new: false,
+        });
+      } catch (error) {
+        console.warn("[CHAT_INIT] Recursos de OpenAI no encontrados, creando nuevos:", error);
+        // Marcar sesión como inactiva y continuar creando una nueva
+        await supabase
+          .from("blueprint_chat_sessions")
+          .update({ is_active: false })
+          .eq("id", existingSession.id);
+      }
     }
 
     // 3. Descargar archivo desde Supabase
@@ -102,10 +116,9 @@ export async function POST(req: NextRequest) {
       file_id: uploadedFile.id,
     });
 
-    // 7. Esperar indexación
+    // 7. Esperar indexación con backoff exponencial
     console.log("[CHAT_INIT] Esperando indexación...");
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
+    
     let fileStatus = await openai.vectorStores.files.retrieve(
       uploadedFile.id,
       {
@@ -114,30 +127,46 @@ export async function POST(req: NextRequest) {
     );
 
     let attempts = 0;
-    const maxAttempts = 120; // Aumentado a 120 segundos (2 minutos)
+    const maxAttempts = 60; // 60 intentos
+    let waitTime = 2000; // Empezar con 2 segundos
+    
     while (fileStatus.status !== "completed" && attempts < maxAttempts) {
       if (fileStatus.status === "failed") {
         throw new Error(
           `File indexing failed: ${fileStatus.last_error?.message || "Unknown error"}`
         );
       }
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      
+      // Esperar con backoff exponencial (máximo 10 segundos)
+      await new Promise((resolve) => setTimeout(resolve, Math.min(waitTime, 10000)));
+      
       fileStatus = await openai.vectorStores.files.retrieve(
         uploadedFile.id,
         {
           vector_store_id: vectorStore.id,
         }
       );
+      
       attempts++;
+      
+      // Aumentar tiempo de espera gradualmente
+      if (attempts % 5 === 0) {
+        waitTime = Math.min(waitTime * 1.5, 10000);
+      }
+      
       console.log(
-        `[CHAT_INIT] File status: ${fileStatus.status} (${attempts}/${maxAttempts})`
+        `[CHAT_INIT] File status: ${fileStatus.status} (attempt ${attempts}/${maxAttempts}, wait: ${waitTime}ms)`
       );
     }
 
     if (fileStatus.status !== "completed") {
       console.error("[CHAT_INIT] Timeout - File status:", fileStatus);
+      
+      // No eliminar recursos, permitir que se complete en background
+      console.log("[CHAT_INIT] Guardando sesión parcial para retry posterior");
+      
       throw new Error(
-        `File indexing timeout after ${maxAttempts} seconds. The PDF might be too large or complex. Current status: ${fileStatus.status}`
+        `El archivo está tardando más de lo esperado en indexarse. Esto es normal para PDFs grandes. Por favor, espera 1-2 minutos y recarga la página para reintentar.`
       );
     }
 

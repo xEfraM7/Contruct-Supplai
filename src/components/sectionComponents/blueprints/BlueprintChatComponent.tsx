@@ -36,8 +36,12 @@ export function BlueprintChat({
 
   // Inicializar chat
   useEffect(() => {
+    let isMounted = true;
+
     async function initChat() {
       try {
+        if (!isMounted) return;
+        
         setInitializing(true);
         setError(null);
 
@@ -47,12 +51,17 @@ export function BlueprintChat({
           body: JSON.stringify({ blueprint_id: blueprintId }),
         });
 
+        if (!isMounted) return;
+
         if (!res.ok) {
           const errorData = await res.json();
           throw new Error(errorData.error || "Error al inicializar chat");
         }
 
         const data = await res.json();
+        
+        if (!isMounted) return;
+        
         setSessionId(data.session_id);
 
         // Cargar historial si existe
@@ -60,24 +69,33 @@ export function BlueprintChat({
           await loadHistory(data.session_id);
         }
       } catch (err) {
+        if (!isMounted) return;
+        
         console.error("Error inicializando chat:", err);
         let errorMessage = "Error al inicializar chat";
-        
+
         if (err instanceof Error) {
           if (err.message.includes("timeout")) {
-            errorMessage = "⏱️ El plano está tardando mucho en procesarse. Esto puede ocurrir con PDFs muy grandes. Por favor, intenta con un archivo más pequeño o espera unos minutos y recarga la página.";
+            errorMessage =
+              "⏱️ El plano está tardando mucho en procesarse. Esto puede ocurrir con PDFs muy grandes. Por favor, intenta con un archivo más pequeño o espera unos minutos y recarga la página.";
           } else {
             errorMessage = err.message;
           }
         }
-        
+
         setError(errorMessage);
       } finally {
-        setInitializing(false);
+        if (isMounted) {
+          setInitializing(false);
+        }
       }
     }
 
     initChat();
+
+    return () => {
+      isMounted = false;
+    };
   }, [blueprintId]);
 
   // Cargar historial
@@ -209,19 +227,47 @@ export function BlueprintChat({
   }
 
   if (error && !sessionId) {
+    const isTimeoutError = error.includes("tardando") || error.includes("timeout");
+    
     return (
       <Card className="bg-card border-border">
         <CardContent className="flex flex-col items-center justify-center py-12">
           <MessageSquare className="w-12 h-12 text-red-500 mb-4" />
-          <p className="text-red-500 font-semibold mb-2">Error</p>
-          <p className="text-muted-foreground text-center">{error}</p>
-          <Button
-            onClick={() => window.location.reload()}
-            className="mt-4"
-            variant="outline"
-          >
-            Reintentar
-          </Button>
+          <p className="text-red-500 font-semibold mb-2">
+            {isTimeoutError ? "⏱️ Procesamiento en Curso" : "Error"}
+          </p>
+          <p className="text-muted-foreground text-center max-w-md mb-4">
+            {error}
+          </p>
+          {isTimeoutError && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4 max-w-md">
+              <p className="text-sm text-yellow-800">
+                💡 <strong>Sugerencia:</strong> El archivo se está procesando en segundo plano. 
+                Espera 1-2 minutos y haz clic en &quot;Reintentar&quot; para verificar si ya está listo.
+              </p>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Button
+              onClick={() => window.location.reload()}
+              className="mt-4"
+              variant="outline"
+            >
+              Reintentar
+            </Button>
+            {isTimeoutError && (
+              <Button
+                onClick={() => {
+                  setError(null);
+                  setInitializing(false);
+                }}
+                className="mt-4"
+                variant="ghost"
+              >
+                Cancelar
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
     );
