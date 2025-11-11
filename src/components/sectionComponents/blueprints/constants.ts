@@ -1,6 +1,6 @@
 // Blueprint related constants
 
-export const menuItems = ["Jobs", "Discrepancies", "RFIs", "Blueprints", "Chat"] as const;
+export const menuItems = ["Jobs", "Discrepancies", "RFIs", "Blueprints"] as const;
 
 export const jobCategories = [
   "Electrical",

@@ -55,20 +55,3 @@ export interface BlueprintFormData {
 export interface BlueprintComponentProps {
   projectId: string;
 }
-
-// Chat related types
-export interface ChatSession {
-  id: string;
-  blueprintId: string;
-  conversationId: string;
-  vectorStoreId: string;
-  title: string;
-  createdAt: string;
-}
-
-export interface ChatMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  createdAt: number;
-}
