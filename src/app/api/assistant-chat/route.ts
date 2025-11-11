@@ -31,140 +31,96 @@ export async function POST(req: NextRequest) {
 
     let contextInfo = "";
     const blueprintFileIds: string[] = [];
-    let blueprintCategory = "General";
 
     if (user && projectId) {
-      // ✅ OPTIMIZACIÓN: Cargar datos en PARALELO
-      const projectPromise = supabase
+      // Obtener información del proyecto
+      const { data: project } = await supabase
         .from("projects")
         .select("name, description")
         .eq("id", projectId)
         .single();
 
-      const blueprintPromise = blueprintId
-        ? supabase
-            .from("blueprints")
-            .select("file_name, category, file_url, openai_file_id")
-            .eq("id", blueprintId)
-            .single()
-        : null;
-
-      const analysesPromise = blueprintId
-        ? supabase
-            .from("blueprint_analyses")
-            .select("category, prompt, created_at")
-            .eq("blueprint_id", blueprintId)
-            .order("created_at", { ascending: false })
-            .limit(3)
-        : null;
-
-      // Ejecutar todas las consultas en paralelo
-      const [projectResult, blueprintResult, analysesResult] = await Promise.all([
-        projectPromise,
-        blueprintPromise,
-        analysesPromise,
-      ]);
-
-      // Procesar proyecto
-      if (projectResult?.data) {
-        contextInfo += `\n## PROJECT CONTEXT\nProject: ${projectResult.data.name}\n`;
-        if (projectResult.data.description) {
-          contextInfo += `Description: ${projectResult.data.description}\n`;
+      if (project) {
+        contextInfo += `\n## PROJECT CONTEXT\nProject: ${project.name}\n`;
+        if (project.description) {
+          contextInfo += `Description: ${project.description}\n`;
         }
       }
 
-      // Procesar blueprint y obtener categoría
-      if (blueprintResult?.data) {
-        const blueprint = blueprintResult.data;
-        blueprintCategory = blueprint.category || "General";
-        contextInfo += `\n## CURRENT BLUEPRINT\nFile: ${blueprint.file_name}\nCategory: ${blueprint.category}\n`;
-
-        // Manejar archivo de OpenAI
-        if (blueprint.openai_file_id) {
-          blueprintFileIds.push(blueprint.openai_file_id);
-          console.log("[CHAT] Using cached OpenAI file:", blueprint.openai_file_id);
-        } else if (blueprint.file_url) {
-          try {
-            console.log("[CHAT] Uploading blueprint to OpenAI...");
-            const response = await fetch(blueprint.file_url);
-            
-            if (response.ok) {
-              const blob = await response.blob();
-              const file = new File([blob], blueprint.file_name, {
-                type: "application/pdf",
-              });
-
-              const uploadedFile = await openai.files.create({
-                file: file,
-                purpose: "assistants",
-              });
-
-              blueprintFileIds.push(uploadedFile.id);
-              console.log("[CHAT] Blueprint uploaded:", uploadedFile.id);
-
-              // Guardar en background (no esperar)
-              supabase
-                .from("blueprints")
-                .update({ openai_file_id: uploadedFile.id })
-                .eq("id", blueprintId)
-                .then(() => console.log("[CHAT] OpenAI file ID cached"));
-            }
-          } catch (uploadError) {
-            console.error("[CHAT] Error uploading blueprint:", uploadError);
-          }
-        }
-      }
-
-      // ✅ OPTIMIZACIÓN: Filtrar inventario por categoría relevante
-      // Mapeo de categorías
-      const categoryMapping: Record<string, string[]> = {
-        Electrical: ["Electrical", "Tools", "Safety"],
-        Plumbing: ["Plumbing", "Tools", "Safety"],
-        HVAC: ["HVAC", "Tools", "Safety"],
-        Structural: ["Structural", "Tools", "Safety"],
-        Architectural: ["Architectural", "Tools", "Safety"],
-      };
-
-      const relevantCategories = categoryMapping[blueprintCategory] || 
-        Object.values(categoryMapping).flat().filter((v, i, a) => a.indexOf(v) === i);
-      
+      // Obtener inventario del usuario
       const { data: equipment } = await supabase
         .from("equipment")
-        .select("name, tag, category, status, value, quantity")
+        .select("name, tag, category, status, location, value, quantity")
         .eq("user_id", user.id)
-        .in("category", relevantCategories)
         .order("category", { ascending: true });
 
       if (equipment && equipment.length > 0) {
-        // ✅ OPTIMIZACIÓN: Formato compacto del inventario
-        contextInfo += `\n## RELEVANT INVENTORY (${blueprintCategory})\n`;
-        contextInfo += `Total items: ${equipment.length}\n\n`;
-        
-        // Agrupar por categoría
-        const grouped = equipment.reduce((acc, item) => {
-          if (!acc[item.category]) acc[item.category] = [];
-          acc[item.category].push(item);
-          return acc;
-        }, {} as Record<string, typeof equipment>);
-
-        Object.entries(grouped).forEach(([cat, items]) => {
-          contextInfo += `**${cat}:**\n`;
-          items.forEach(item => {
-            contextInfo += `- ${item.name} (${item.tag}): $${item.value} x${item.quantity} [${item.status}]\n`;
-          });
-          contextInfo += `\n`;
-        });
-      } else {
-        contextInfo += `\n## INVENTORY STATUS\nNo items found for ${blueprintCategory} category.\n`;
+        contextInfo += `\n## USER INVENTORY\n\`\`\`json\n${JSON.stringify(
+          equipment,
+          null,
+          2
+        )}\n\`\`\`\n`;
       }
 
-      // Procesar análisis (solo metadata)
-      if (analysesResult?.data && analysesResult.data.length > 0) {
-        contextInfo += `\n## RECENT ANALYSES\n`;
-        analysesResult.data.forEach((analysis, idx) => {
-          const date = new Date(analysis.created_at).toLocaleDateString();
-          contextInfo += `${idx + 1}. ${analysis.category} - ${date}\n   Q: ${analysis.prompt.substring(0, 80)}...\n`;
-        });
+      // Si hay un blueprint específico, obtener sus análisis Y el archivo PDF
+      if (blueprintId) {
+        const { data: blueprint } = await supabase
+          .from("blueprints")
+          .select("file_name, category, file_url, openai_file_id")
+          .eq("id", blueprintId)
+          .single();
+
+        if (blueprint) {
+          contextInfo += `\n## CURRENT BLUEPRINT\nFile: ${blueprint.file_name}\nCategory: ${blueprint.category}\n`;
+
+          // Si el blueprint tiene un openai_file_id guardado, usarlo
+          if (blueprint.openai_file_id) {
+            blueprintFileIds.push(blueprint.openai_file_id);
+            console.log("[CHAT] Using existing OpenAI file:", blueprint.openai_file_id);
+          } else if (blueprint.file_url) {
+            // Si no tiene openai_file_id, subir el PDF a OpenAI
+            try {
+              console.log("[CHAT] Uploading blueprint to OpenAI...");
+              const response = await fetch(blueprint.file_url);
+              if (response.ok) {
+                const blob = await response.blob();
+                const file = new File([blob], blueprint.file_name, {
+                  type: "application/pdf",
+                });
+
+                const uploadedFile = await openai.files.create({
+                  file: file,
+                  purpose: "assistants",
+                });
+
+                blueprintFileIds.push(uploadedFile.id);
+                console.log("[CHAT] Blueprint uploaded:", uploadedFile.id);
+
+                // Guardar el openai_file_id para futuras consultas
+                await supabase
+                  .from("blueprints")
+                  .update({ openai_file_id: uploadedFile.id })
+                  .eq("id", blueprintId);
+              }
+            } catch (uploadError) {
+              console.error("[CHAT] Error uploading blueprint:", uploadError);
+            }
+          }
+        }
+
+        const { data: analyses } = await supabase
+          .from("blueprint_analyses")
+          .select("category, prompt, result, created_at")
+          .eq("blueprint_id", blueprintId)
+          .order("created_at", { ascending: false })
+          .limit(3);
+
+        if (analyses && analyses.length > 0) {
+          contextInfo += `\n## RECENT ANALYSES\n`;
+          analyses.forEach((analysis, idx) => {
+            contextInfo += `\nAnalysis ${idx + 1} (${analysis.category}):\nPrompt: ${analysis.prompt}\n`;
+          });
+        }
       }
     }
 
