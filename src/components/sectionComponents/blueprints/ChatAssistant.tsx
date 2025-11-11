@@ -86,15 +86,24 @@ export function ChatAssistant({
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const currentInput = input;
     setInput("");
     setLoading(true);
+
+    // Crear mensaje del assistant vacío para ir llenándolo con streaming
+    const assistantMessage: Message = {
+      role: "assistant",
+      content: "",
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, assistantMessage]);
 
     try {
       const response = await fetch("/api/assistant-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: input,
+          message: currentInput,
           conversationId,
           projectId,
           blueprintId,
@@ -106,27 +115,67 @@ export function ChatAssistant({
         throw new Error("Failed to get response");
       }
 
-      const data = await response.json();
+      // Leer el stream
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
 
-      const assistantMessage: Message = {
-        role: "assistant",
-        content: data.reply,
-        timestamp: new Date(),
-      };
+      if (!reader) {
+        throw new Error("No reader available");
+      }
 
-      setMessages((prev) => [...prev, assistantMessage]);
-      
-      if (data.conversationId && !conversationId) {
-        setConversationId(data.conversationId);
+      let done = false;
+      while (!done) {
+        const { value, done: streamDone } = await reader.read();
+        done = streamDone;
+
+        if (value) {
+          const chunk = decoder.decode(value);
+          const lines = chunk.split("\n");
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.slice(6));
+
+                if (data.type === "chunk") {
+                  // Actualizar el último mensaje (assistant) con el nuevo contenido
+                  setMessages((prev) => {
+                    const newMessages = [...prev];
+                    const lastMessage = newMessages[newMessages.length - 1];
+                    if (lastMessage.role === "assistant") {
+                      lastMessage.content += data.content;
+                    }
+                    return newMessages;
+                  });
+
+                  if (data.conversationId && !conversationId) {
+                    setConversationId(data.conversationId);
+                  }
+                } else if (data.type === "done") {
+                  if (data.conversationId && !conversationId) {
+                    setConversationId(data.conversationId);
+                  }
+                } else if (data.type === "error") {
+                  throw new Error(data.error);
+                }
+              } catch (parseError) {
+                console.error("Error parsing stream data:", parseError);
+              }
+            }
+          }
+        }
       }
     } catch (error) {
       console.error("Chat error:", error);
-      const errorMessage: Message = {
-        role: "assistant",
-        content: "Sorry, I encountered an error. Please try again.",
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+      // Reemplazar el último mensaje con un error
+      setMessages((prev) => {
+        const newMessages = [...prev];
+        const lastMessage = newMessages[newMessages.length - 1];
+        if (lastMessage.role === "assistant" && !lastMessage.content) {
+          lastMessage.content = "Sorry, I encountered an error. Please try again.";
+        }
+        return newMessages;
+      });
     } finally {
       setLoading(false);
     }
