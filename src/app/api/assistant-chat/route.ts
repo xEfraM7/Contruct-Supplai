@@ -227,6 +227,7 @@ export async function POST(req: NextRequest) {
     const responseParams: {
       model: string;
       instructions: string;
+      input: string;
       conversation_id: string;
       tools?: Array<{ type: string; file_ids?: string[] }>;
     } = {
@@ -241,6 +242,7 @@ Key responsibilities:
 - Suggest solutions and best practices
 
 When referencing costs, always use the user's inventory data when available. Be concise but thorough in your responses.`,
+      input: messageContent,
       conversation_id: openaiConversationId,
     };
 
