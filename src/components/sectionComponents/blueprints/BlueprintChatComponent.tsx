@@ -61,9 +61,17 @@ export function BlueprintChat({
         }
       } catch (err) {
         console.error("Error inicializando chat:", err);
-        setError(
-          err instanceof Error ? err.message : "Error al inicializar chat"
-        );
+        let errorMessage = "Error al inicializar chat";
+        
+        if (err instanceof Error) {
+          if (err.message.includes("timeout")) {
+            errorMessage = "⏱️ El plano está tardando mucho en procesarse. Esto puede ocurrir con PDFs muy grandes. Por favor, intenta con un archivo más pequeño o espera unos minutos y recarga la página.";
+          } else {
+            errorMessage = err.message;
+          }
+        }
+        
+        setError(errorMessage);
       } finally {
         setInitializing(false);
       }
@@ -186,10 +194,15 @@ export function BlueprintChat({
       <Card className="bg-card border-border">
         <CardContent className="flex flex-col items-center justify-center py-12">
           <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
-          <p className="text-muted-foreground">Inicializando chat...</p>
-          <p className="text-sm text-muted-foreground mt-2">
-            Esto puede tomar unos segundos
-          </p>
+          <p className="text-muted-foreground font-medium">Inicializando chat...</p>
+          <div className="text-sm text-muted-foreground mt-4 text-center max-w-md space-y-2">
+            <p>📄 Subiendo plano a OpenAI</p>
+            <p>🔍 Indexando contenido del PDF</p>
+            <p>💬 Creando conversación</p>
+            <p className="text-xs mt-4 text-yellow-600">
+              ⏱️ Esto puede tomar 10-30 segundos para PDFs pequeños, o hasta 2 minutos para archivos grandes
+            </p>
+          </div>
         </CardContent>
       </Card>
     );

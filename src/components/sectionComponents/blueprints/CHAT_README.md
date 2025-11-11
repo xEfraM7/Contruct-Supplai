@@ -181,8 +181,18 @@ AI: Analiza sección específica del plano, explica conexiones
 ## 🐛 Troubleshooting
 
 ### Error: "File indexing timeout"
-- El PDF es muy grande (>150MB)
-- Solución: Reducir tamaño o aumentar maxAttempts
+**Causas:**
+- El PDF es muy grande (>50MB)
+- El PDF tiene muchas páginas (>100)
+- El PDF contiene imágenes de alta resolución
+- Problemas de red con OpenAI
+
+**Soluciones:**
+1. Reducir el tamaño del PDF (comprimir imágenes)
+2. Dividir el PDF en secciones más pequeñas
+3. Aumentar `maxAttempts` en `/api/chat-blueprints/init/route.ts` (actualmente 120 segundos)
+4. Aumentar `maxDuration` (actualmente 180 segundos)
+5. Esperar unos minutos y reintentar
 
 ### Error: "Sesión no encontrada"
 - La sesión fue eliminada o expiró

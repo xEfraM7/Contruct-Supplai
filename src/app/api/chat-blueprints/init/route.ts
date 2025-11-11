@@ -3,7 +3,7 @@ import { openai } from "@/lib/openAI";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300; // 3 minutos para PDFs grandes
 export const dynamic = "force-dynamic";
 
 /**
@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
     );
 
     let attempts = 0;
-    const maxAttempts = 60;
+    const maxAttempts = 120; // Aumentado a 120 segundos (2 minutos)
     while (fileStatus.status !== "completed" && attempts < maxAttempts) {
       if (fileStatus.status === "failed") {
         throw new Error(
@@ -135,7 +135,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (fileStatus.status !== "completed") {
-      throw new Error("File indexing timeout");
+      console.error("[CHAT_INIT] Timeout - File status:", fileStatus);
+      throw new Error(
+        `File indexing timeout after ${maxAttempts} seconds. The PDF might be too large or complex. Current status: ${fileStatus.status}`
+      );
     }
 
     console.log("[CHAT_INIT] Archivo indexado correctamente");
