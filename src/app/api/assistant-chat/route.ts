@@ -5,9 +5,6 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-// Store para mantener conversaciones en memoria (en producción usar Redis o DB)
-const conversationStore = new Map<string, string>();
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -33,6 +30,7 @@ export async function POST(req: NextRequest) {
     } = await supabase.auth.getUser();
 
     let contextInfo = "";
+    const blueprintFileIds: string[] = [];
 
     if (user && projectId) {
       // Obtener información del proyecto
@@ -64,16 +62,50 @@ export async function POST(req: NextRequest) {
         )}\n\`\`\`\n`;
       }
 
-      // Si hay un blueprint específico, obtener sus análisis
+      // Si hay un blueprint específico, obtener sus análisis Y el archivo PDF
       if (blueprintId) {
         const { data: blueprint } = await supabase
           .from("blueprints")
-          .select("file_name, category")
+          .select("file_name, category, file_url, openai_file_id")
           .eq("id", blueprintId)
           .single();
 
         if (blueprint) {
           contextInfo += `\n## CURRENT BLUEPRINT\nFile: ${blueprint.file_name}\nCategory: ${blueprint.category}\n`;
+
+          // Si el blueprint tiene un openai_file_id guardado, usarlo
+          if (blueprint.openai_file_id) {
+            blueprintFileIds.push(blueprint.openai_file_id);
+            console.log("[CHAT] Using existing OpenAI file:", blueprint.openai_file_id);
+          } else if (blueprint.file_url) {
+            // Si no tiene openai_file_id, subir el PDF a OpenAI
+            try {
+              console.log("[CHAT] Uploading blueprint to OpenAI...");
+              const response = await fetch(blueprint.file_url);
+              if (response.ok) {
+                const blob = await response.blob();
+                const file = new File([blob], blueprint.file_name, {
+                  type: "application/pdf",
+                });
+
+                const uploadedFile = await openai.files.create({
+                  file: file,
+                  purpose: "assistants",
+                });
+
+                blueprintFileIds.push(uploadedFile.id);
+                console.log("[CHAT] Blueprint uploaded:", uploadedFile.id);
+
+                // Guardar el openai_file_id para futuras consultas
+                await supabase
+                  .from("blueprints")
+                  .update({ openai_file_id: uploadedFile.id })
+                  .eq("id", blueprintId);
+              }
+            } catch (uploadError) {
+              console.error("[CHAT] Error uploading blueprint:", uploadError);
+            }
+          }
         }
 
         const { data: analyses } = await supabase
@@ -97,39 +129,62 @@ export async function POST(req: NextRequest) {
       contextInfo += `\n## CURRENT ANALYSIS RESULT\n${analysisContext}\n`;
     }
 
-    // Obtener o crear thread de conversación
-    let threadId: string;
+    // Obtener o crear conversación usando Supabase
+    let openaiConversationId: string;
+    let conversationId: string;
 
-    if (clientConversationId && conversationStore.has(clientConversationId)) {
-      threadId = conversationStore.get(clientConversationId)!;
-      console.log("[CHAT] Using existing thread:", threadId);
+    if (clientConversationId) {
+      // Buscar conversación existente
+      const { data: existingConv } = await supabase
+        .from("chat_conversations")
+        .select("id, thread_id")
+        .eq("id", clientConversationId)
+        .eq("user_id", user!.id)
+        .single();
+
+      if (existingConv) {
+        openaiConversationId = existingConv.thread_id;
+        conversationId = existingConv.id;
+        console.log("[CHAT] Using existing conversation:", openaiConversationId);
+      } else {
+        // Si no existe, crear nueva conversación en OpenAI
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const conversation = await (openai as any).conversations.create({
+          model: "gpt-5",
+          instructions: `You are an expert construction estimator and blueprint analyst. You help users understand their construction blueprints, provide cost estimates, identify discrepancies, and answer questions about their projects.
+
+Key responsibilities:
+- Answer questions about blueprint analyses
+- Provide cost estimates based on user's inventory
+- Explain technical details in clear language
+- Help identify potential issues or discrepancies
+- Suggest solutions and best practices
+
+When referencing costs, always use the user's inventory data when available. Be concise but thorough in your responses.`,
+        });
+
+        openaiConversationId = conversation.id;
+
+        const { data: newConv } = await supabase
+          .from("chat_conversations")
+          .insert({
+            user_id: user!.id,
+            project_id: projectId || null,
+            blueprint_id: blueprintId || null,
+            thread_id: openaiConversationId,
+            title: message.substring(0, 100),
+          })
+          .select()
+          .single();
+
+        conversationId = newConv!.id;
+        console.log("[CHAT] Created new conversation:", openaiConversationId);
+      }
     } else {
-      // Crear nuevo thread
-      const thread = await openai.beta.threads.create();
-      threadId = thread.id;
-      const newConversationId = `conv_${Date.now()}`;
-      conversationStore.set(newConversationId, threadId);
-      console.log("[CHAT] Created new thread:", threadId);
-    }
-
-    // Agregar mensaje del usuario al thread
-    await openai.beta.threads.messages.create(threadId, {
-      role: "user",
-      content: contextInfo
-        ? `${contextInfo}\n\n---\n\nUser Question: ${message}`
-        : message,
-    });
-
-    // Crear o obtener assistant
-    const assistantId = process.env.OPENAI_ASSISTANT_ID;
-    let assistant;
-
-    if (assistantId) {
-      assistant = await openai.beta.assistants.retrieve(assistantId);
-    } else {
-      // Crear assistant si no existe
-      assistant = await openai.beta.assistants.create({
-        name: "Blueprint Analysis Assistant",
+      // Crear nueva conversación en OpenAI
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const conversation = await (openai as any).conversations.create({
+        model: "gpt-5",
         instructions: `You are an expert construction estimator and blueprint analyst. You help users understand their construction blueprints, provide cost estimates, identify discrepancies, and answer questions about their projects.
 
 Key responsibilities:
@@ -140,76 +195,103 @@ Key responsibilities:
 - Suggest solutions and best practices
 
 When referencing costs, always use the user's inventory data when available. Be concise but thorough in your responses.`,
-        model: "gpt-4o",
+      });
+
+      openaiConversationId = conversation.id;
+
+      const { data: newConv } = await supabase
+        .from("chat_conversations")
+        .insert({
+          user_id: user!.id,
+          project_id: projectId || null,
+          blueprint_id: blueprintId || null,
+          thread_id: openaiConversationId,
+          title: message.substring(0, 100),
+        })
+        .select()
+        .single();
+
+      conversationId = newConv!.id;
+      console.log("[CHAT] Created new conversation:", conversationId);
+    }
+
+    // Preparar el mensaje con contexto
+    const messageContent = contextInfo
+      ? `${contextInfo}\n\n---\n\nUser Question: ${message}`
+      : message;
+
+    // Crear mensaje en la conversación con archivos adjuntos si existen
+    const messageParams: {
+      role: "user";
+      content: string;
+      attachments?: Array<{
+        file_id: string;
+        tools: Array<{ type: "file_search" }>;
+      }>;
+    } = {
+      role: "user",
+      content: messageContent,
+    };
+
+    // Si hay archivos de blueprints, adjuntarlos al mensaje
+    if (blueprintFileIds.length > 0) {
+      messageParams.attachments = blueprintFileIds.map((fileId) => ({
+        file_id: fileId,
         tools: [{ type: "file_search" }],
-      });
-
-      console.log(
-        "[CHAT] Created new assistant:",
-        assistant.id,
-        "- Add this to your .env as OPENAI_ASSISTANT_ID"
-      );
+      }));
+      console.log("[CHAT] Attaching blueprint files:", blueprintFileIds);
     }
 
-    // Ejecutar el assistant
-    const run = await openai.beta.threads.runs.create(threadId, {
-      assistant_id: assistant.id,
-    });
+    // Agregar mensaje a la conversación
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (openai as any).conversations.messages.create(
+      openaiConversationId,
+      messageParams
+    );
 
-    // Esperar a que termine la ejecución
-    let runStatus = await openai.beta.threads.runs.retrieve(run.id, {
-      thread_id: threadId,
-    });
-    let attempts = 0;
-    const maxAttempts = 30;
+    console.log("[CHAT] Message added to conversation");
 
-    while (
-      runStatus.status !== "completed" &&
-      runStatus.status !== "failed" &&
-      attempts < maxAttempts
-    ) {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      runStatus = await openai.beta.threads.runs.retrieve(run.id, {
-        thread_id: threadId,
-      });
-      attempts++;
-      console.log(`[CHAT] Run status: ${runStatus.status} (${attempts}/${maxAttempts})`);
-    }
+    // Obtener los mensajes de la conversación
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const conversationMessages = await (openai as any).conversations.messages.list(
+      openaiConversationId
+    );
 
-    if (runStatus.status === "failed") {
-      throw new Error(
-        `Assistant run failed: ${runStatus.last_error?.message || "Unknown error"}`
-      );
-    }
-
-    if (runStatus.status !== "completed") {
-      throw new Error("Assistant run timeout");
-    }
-
-    // Obtener los mensajes del thread
-    const messages = await openai.beta.threads.messages.list(threadId);
-    const lastMessage = messages.data[0];
-
-    if (!lastMessage || lastMessage.role !== "assistant") {
-      throw new Error("No assistant response found");
-    }
+    // Obtener la última respuesta del assistant
+    const lastMessage = conversationMessages.data.find(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (msg: any) => msg.role === "assistant"
+    );
 
     // Extraer el contenido del mensaje
     let reply = "No response generated.";
-    if (lastMessage.content && lastMessage.content.length > 0) {
-      const content = lastMessage.content[0];
-      if (content.type === "text") {
-        reply = content.text.value;
+    if (lastMessage?.content && Array.isArray(lastMessage.content)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const textContent = lastMessage.content.find((c: any) => c.type === "text");
+      if (textContent?.text) {
+        reply = textContent.text;
       }
     }
 
+    // Guardar mensajes en Supabase
+    await supabase.from("chat_messages").insert([
+      {
+        conversation_id: conversationId,
+        role: "user",
+        content: message,
+      },
+      {
+        conversation_id: conversationId,
+        role: "assistant",
+        content: reply,
+      },
+    ]);
+
+    console.log("[CHAT] Messages saved to database");
+
     return NextResponse.json({
       reply,
-      conversationId:
-        clientConversationId ||
-        Array.from(conversationStore.entries()).find(
-          ([, tid]) => tid === threadId
-        )?.[0],
+      conversationId,
     });
   } catch (error: unknown) {
     console.error("[CHAT_ERROR]:", error);

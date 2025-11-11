@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Send, MessageSquare, X } from "lucide-react";
@@ -29,7 +29,44 @@ export function ChatAssistant({
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const loadMessageHistory = async () => {
+    if (!conversationId) return;
+
+    setLoadingHistory(true);
+    try {
+      const response = await fetch(
+        `/api/chat-messages?conversation_id=${conversationId}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        const historyMessages: Message[] = data.messages.map((msg: {
+          role: string;
+          content: string;
+          created_at: string;
+        }) => ({
+          role: msg.role as "user" | "assistant",
+          content: msg.content,
+          timestamp: new Date(msg.created_at),
+        }));
+        setMessages(historyMessages);
+      }
+    } catch (error) {
+      console.error("Error loading message history:", error);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  // Cargar historial de mensajes cuando hay un conversationId
+  useEffect(() => {
+    if (conversationId && messages.length === 0) {
+      loadMessageHistory();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -115,8 +152,8 @@ export function ChatAssistant({
   }
 
   return (
-    <Card className="fixed bottom-6 right-6 w-96 h-[600px] shadow-2xl z-50 flex flex-col">
-      <CardHeader className="border-b flex flex-row items-center justify-between py-3">
+    <Card className="fixed bottom-6 right-6 w-96 h-[600px] shadow-2xl z-50 flex flex-col overflow-hidden">
+      <CardHeader className="border-b flex flex-row items-center justify-between py-3 px-4 shrink-0">
         <div className="flex items-center gap-2">
           <MessageSquare className="w-5 h-5 text-primary" />
           <h3 className="font-semibold">Blueprint Assistant</h3>
@@ -131,82 +168,88 @@ export function ChatAssistant({
         </Button>
       </CardHeader>
 
-      <CardContent className="flex-1 flex flex-col p-0">
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.length === 0 && (
-            <div className="text-center text-muted-foreground text-sm py-8">
-              <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>Ask me anything about your blueprints!</p>
-              <p className="text-xs mt-2">
-                I can help with analysis, RFIs, and cost estimates.
-              </p>
-            </div>
-          )}
+      {/* Messages Container - con flex-1 y overflow-hidden */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {loadingHistory && (
+          <div className="flex justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        )}
 
-          {messages.map((msg, idx) => (
+        {!loadingHistory && messages.length === 0 && (
+          <div className="text-center text-muted-foreground text-sm py-8">
+            <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <p>Ask me anything about your blueprints!</p>
+            <p className="text-xs mt-2">
+              I can help with analysis, RFIs, and cost estimates.
+            </p>
+          </div>
+        )}
+
+        {messages.map((msg, idx) => (
+          <div
+            key={idx}
+            className={cn(
+              "flex",
+              msg.role === "user" ? "justify-end" : "justify-start"
+            )}
+          >
             <div
-              key={idx}
               className={cn(
-                "flex",
-                msg.role === "user" ? "justify-end" : "justify-start"
+                "max-w-[85%] rounded-lg px-3 py-2 break-words",
+                msg.role === "user"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted"
               )}
             >
-              <div
-                className={cn(
-                  "max-w-[80%] rounded-lg px-4 py-2",
-                  msg.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted"
-                )}
-              >
-                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                <p className="text-xs opacity-70 mt-1">
-                  {msg.timestamp.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
-              </div>
+              <p className="text-sm whitespace-pre-wrap break-words">
+                {msg.content}
+              </p>
+              <p className="text-xs opacity-70 mt-1">
+                {msg.timestamp.toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
             </div>
-          ))}
-
-          {loading && (
-            <div className="flex justify-start">
-              <div className="bg-muted rounded-lg px-4 py-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-              </div>
-            </div>
-          )}
-
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input */}
-        <div className="border-t p-4">
-          <div className="flex gap-2">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask about your blueprint..."
-              className="min-h-[60px] max-h-[120px] resize-none"
-              disabled={loading}
-            />
-            <Button
-              onClick={sendMessage}
-              disabled={loading || !input.trim()}
-              size="icon"
-              className="shrink-0"
-            >
-              <Send className="w-4 h-4" />
-            </Button>
           </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Press Enter to send, Shift+Enter for new line
-          </p>
+        ))}
+
+        {loading && (
+          <div className="flex justify-start">
+            <div className="bg-muted rounded-lg px-4 py-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+            </div>
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input Container - con shrink-0 para que no se comprima */}
+      <div className="border-t p-4 shrink-0 bg-background">
+        <div className="flex gap-2">
+          <Textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask about your blueprint..."
+            className="min-h-[60px] max-h-[120px] resize-none"
+            disabled={loading}
+          />
+          <Button
+            onClick={sendMessage}
+            disabled={loading || !input.trim()}
+            size="icon"
+            className="shrink-0 self-end"
+          >
+            <Send className="w-4 h-4" />
+          </Button>
         </div>
-      </CardContent>
+        <p className="text-xs text-muted-foreground mt-2">
+          Press Enter to send, Shift+Enter for new line
+        </p>
+      </div>
     </Card>
   );
 }
