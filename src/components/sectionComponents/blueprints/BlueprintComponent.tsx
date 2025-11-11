@@ -41,6 +41,7 @@ import {
   useBlueprints,
   useAnalyses,
   useAnalyzeBlueprint,
+  BlueprintChat,
 } from "./index";
 
 export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
@@ -912,6 +913,83 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
                     No analysis available. Please analyze a blueprint first in
                     the Jobs section.
                   </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeMenu === "Chat" && (
+            <div className="min-h-[400px]">
+              {loadingBlueprints ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                </div>
+              ) : blueprints.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                  <FileText className="w-16 h-16 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">
+                    No blueprints uploaded yet. Upload and analyze a blueprint
+                    in the Jobs section first.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  {/* Lista de Blueprints */}
+                  <div className="lg:col-span-1 space-y-2">
+                    <h3 className="text-sm font-semibold text-card-foreground mb-3">
+                      Select Blueprint
+                    </h3>
+                    {blueprints.map((blueprint: Blueprint) => (
+                      <button
+                        key={blueprint.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedBlueprintForView(blueprint.id);
+                        }}
+                        className={`w-full p-3 rounded-lg text-left transition-colors ${
+                          selectedBlueprintForView === blueprint.id
+                            ? "bg-primary/10 border-2 border-primary"
+                            : "border border-border hover:bg-muted/50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <FileText className="w-4 h-4 text-primary" />
+                          <p className="font-medium text-card-foreground truncate">
+                            {blueprint.fileName}
+                          </p>
+                        </div>
+                        {blueprint.category && (
+                          <p className="text-xs text-muted-foreground">
+                            {blueprint.category}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(blueprint.createdAt).toLocaleDateString()}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Chat Component */}
+                  <div className="lg:col-span-2">
+                    {!selectedBlueprintForView ? (
+                      <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                        <FileText className="w-16 h-16 text-muted-foreground mb-4" />
+                        <p className="text-muted-foreground">
+                          Select a blueprint to start chatting
+                        </p>
+                      </div>
+                    ) : (
+                      <BlueprintChat
+                        blueprintId={selectedBlueprintForView}
+                        blueprintName={
+                          blueprints.find(
+                            (b: Blueprint) => b.id === selectedBlueprintForView
+                          )?.fileName || "Blueprint"
+                        }
+                      />
+                    )}
+                  </div>
                 </div>
               )}
             </div>
