@@ -5,16 +5,6 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-// Mapeo de categorías de blueprint a categorías de inventario
-const CATEGORY_MAPPING: Record<string, string[]> = {
-  Electrical: ["Electrical", "Tools", "Safety"],
-  Plumbing: ["Plumbing", "Tools", "Safety"],
-  HVAC: ["HVAC", "Tools", "Safety"],
-  Structural: ["Structural", "Tools", "Safety"],
-  Architectural: ["Architectural", "Tools", "Safety"],
-  General: ["Electrical", "Plumbing", "HVAC", "Structural", "Architectural", "Tools", "Safety"],
-};
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -44,7 +34,7 @@ export async function POST(req: NextRequest) {
     let blueprintCategory = "General";
 
     if (user && projectId) {
-      // ✅ OPTIMIZACIÓN 1: Cargar datos en PARALELO
+      // ✅ OPTIMIZACIÓN: Cargar datos en PARALELO
       const projectPromise = supabase
         .from("projects")
         .select("name, description")
@@ -83,7 +73,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Procesar blueprint
+      // Procesar blueprint y obtener categoría
       if (blueprintResult?.data) {
         const blueprint = blueprintResult.data;
         blueprintCategory = blueprint.category || "General";
@@ -94,12 +84,9 @@ export async function POST(req: NextRequest) {
           blueprintFileIds.push(blueprint.openai_file_id);
           console.log("[CHAT] Using cached OpenAI file:", blueprint.openai_file_id);
         } else if (blueprint.file_url) {
-          // Subir en paralelo con otras operaciones
           try {
             console.log("[CHAT] Uploading blueprint to OpenAI...");
-            const [response] = await Promise.all([
-              fetch(blueprint.file_url),
-            ]);
+            const response = await fetch(blueprint.file_url);
             
             if (response.ok) {
               const blob = await response.blob();
@@ -128,8 +115,18 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // ✅ OPTIMIZACIÓN 2: Filtrar inventario por categoría relevante
-      const relevantCategories = CATEGORY_MAPPING[blueprintCategory] || CATEGORY_MAPPING.General;
+      // ✅ OPTIMIZACIÓN: Filtrar inventario por categoría relevante
+      // Mapeo de categorías
+      const categoryMapping: Record<string, string[]> = {
+        Electrical: ["Electrical", "Tools", "Safety"],
+        Plumbing: ["Plumbing", "Tools", "Safety"],
+        HVAC: ["HVAC", "Tools", "Safety"],
+        Structural: ["Structural", "Tools", "Safety"],
+        Architectural: ["Architectural", "Tools", "Safety"],
+      };
+
+      const relevantCategories = categoryMapping[blueprintCategory] || 
+        Object.values(categoryMapping).flat().filter((v, i, a) => a.indexOf(v) === i);
       
       const { data: equipment } = await supabase
         .from("equipment")
@@ -139,11 +136,11 @@ export async function POST(req: NextRequest) {
         .order("category", { ascending: true });
 
       if (equipment && equipment.length > 0) {
-        // ✅ OPTIMIZACIÓN 3: Formato compacto del inventario
+        // ✅ OPTIMIZACIÓN: Formato compacto del inventario
         contextInfo += `\n## RELEVANT INVENTORY (${blueprintCategory})\n`;
         contextInfo += `Total items: ${equipment.length}\n\n`;
         
-        // Agrupar por categoría para mejor legibilidad
+        // Agrupar por categoría
         const grouped = equipment.reduce((acc, item) => {
           if (!acc[item.category]) acc[item.category] = [];
           acc[item.category].push(item);
@@ -161,7 +158,7 @@ export async function POST(req: NextRequest) {
         contextInfo += `\n## INVENTORY STATUS\nNo items found for ${blueprintCategory} category.\n`;
       }
 
-      // Procesar análisis (solo metadata, no resultados completos)
+      // Procesar análisis (solo metadata)
       if (analysesResult?.data && analysesResult.data.length > 0) {
         contextInfo += `\n## RECENT ANALYSES\n`;
         analysesResult.data.forEach((analysis, idx) => {
@@ -309,81 +306,47 @@ When referencing costs, always use the user's inventory data when available. Be 
       console.log("[CHAT] Attaching blueprint files:", blueprintFileIds);
     }
 
-    // ✅ OPTIMIZACIÓN 4: Streaming de respuesta
-    console.log("[CHAT] Generating response with streaming...");
-    
-    // Crear stream de respuesta
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      async start(controller) {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const apiResponse = await (openai as any).responses.create({
-            ...responseParams,
-            stream: true,
-          });
+    // Generar respuesta usando Responses API
+    console.log("[CHAT] Generating response with Responses API...");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const apiResponse = await (openai as any).responses.create(responseParams);
 
-          let fullReply = "";
+    console.log("[CHAT] Response generated");
 
-          // Procesar el stream
-          for await (const chunk of apiResponse) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            if (chunk.type === "response.output_item.delta" && (chunk as any).delta?.type === "output_text") {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const text = (chunk as any).delta?.text || "";
-              fullReply += text;
-              
-              // Enviar chunk al cliente
-              const data = JSON.stringify({ 
-                type: "chunk", 
-                content: text,
-                conversationId,
-              });
-              controller.enqueue(encoder.encode(`data: ${data}\n\n`));
-            }
-          }
-
-          // Guardar mensajes en Supabase en background
-          supabase.from("chat_messages").insert([
-            {
-              conversation_id: conversationId,
-              role: "user",
-              content: message,
-            },
-            {
-              conversation_id: conversationId,
-              role: "assistant",
-              content: fullReply,
-            },
-          ]).then(() => console.log("[CHAT] Messages saved to database"));
-
-          // Enviar mensaje de finalización
-          const doneData = JSON.stringify({ 
-            type: "done", 
-            conversationId,
-            fullReply,
-          });
-          controller.enqueue(encoder.encode(`data: ${doneData}\n\n`));
-          
-          controller.close();
-        } catch (error) {
-          console.error("[CHAT_STREAM_ERROR]:", error);
-          const errorData = JSON.stringify({ 
-            type: "error", 
-            error: error instanceof Error ? error.message : "Stream error",
-          });
-          controller.enqueue(encoder.encode(`data: ${errorData}\n\n`));
-          controller.close();
+    // Extraer el texto de la respuesta
+    let reply = "No response generated.";
+    if (apiResponse.output && Array.isArray(apiResponse.output)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const messageOutput = apiResponse.output.find((item: any) => item.type === "message");
+      
+      if (messageOutput?.content && Array.isArray(messageOutput.content)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const textContent = messageOutput.content.find((item: any) => item.type === "output_text");
+        if (textContent?.text) {
+          reply = textContent.text;
         }
-      },
-    });
+      }
+    }
 
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        "Connection": "keep-alive",
+    // Guardar mensajes en Supabase
+    await supabase.from("chat_messages").insert([
+      {
+        conversation_id: conversationId,
+        role: "user",
+        content: message,
       },
+      {
+        conversation_id: conversationId,
+        role: "assistant",
+        content: reply,
+      },
+    ]);
+
+    console.log("[CHAT] Messages saved to database");
+
+    return NextResponse.json({
+      reply,
+      conversationId,
     });
   } catch (error: unknown) {
     console.error("[CHAT_ERROR]:", error);
