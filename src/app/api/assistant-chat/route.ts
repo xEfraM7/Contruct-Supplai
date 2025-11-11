@@ -224,13 +224,8 @@ export async function POST(req: NextRequest) {
     console.log("[CHAT] Message added to conversation");
 
     // Usar Responses API para generar la respuesta con el modelo y archivos
-    const responseParams: {
-      model: string;
-      instructions: string;
-      input: string;
-      conversation_id: string;
-      tools?: Array<{ type: string; file_ids?: string[] }>;
-    } = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const responseParams: any = {
       model: "gpt-5",
       instructions: `You are an expert construction estimator and blueprint analyst. You help users understand their construction blueprints, provide cost estimates, identify discrepancies, and answer questions about their projects.
 
@@ -243,7 +238,10 @@ Key responsibilities:
 
 When referencing costs, always use the user's inventory data when available. Be concise but thorough in your responses.`,
       input: messageContent,
-      conversation_id: openaiConversationId,
+      context: {
+        type: "conversation",
+        conversation_id: openaiConversationId,
+      },
     };
 
     // Si hay archivos de blueprints, agregarlos como herramienta
