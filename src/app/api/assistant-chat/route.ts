@@ -147,9 +147,21 @@ export async function POST(req: NextRequest) {
         conversationId = existingConv.id;
         console.log("[CHAT] Using existing conversation:", openaiConversationId);
       } else {
-        // Si no existe, crear nueva conversación en OpenAI (sin model ni instructions)
+        // Si no existe, crear nueva conversación en OpenAI con contexto inicial
+        const initialItems = [];
+        
+        // Agregar contexto como primer mensaje si existe
+        if (contextInfo) {
+          initialItems.push({
+            type: "message",
+            role: "user",
+            content: [{ type: "input_text", text: `SYSTEM CONTEXT:\n${contextInfo}` }],
+          });
+        }
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const conversation = await (openai as any).conversations.create({
+          items: initialItems.length > 0 ? initialItems : undefined,
           metadata: {
             project_id: projectId || "",
             blueprint_id: blueprintId || "",
@@ -171,12 +183,24 @@ export async function POST(req: NextRequest) {
           .single();
 
         conversationId = newConv!.id;
-        console.log("[CHAT] Created new conversation:", openaiConversationId);
+        console.log("[CHAT] Created new conversation with context:", openaiConversationId);
       }
     } else {
-      // Crear nueva conversación en OpenAI
+      // Crear nueva conversación en OpenAI con contexto inicial
+      const initialItems = [];
+      
+      // Agregar contexto como primer mensaje si existe
+      if (contextInfo) {
+        initialItems.push({
+          type: "message",
+          role: "user",
+          content: [{ type: "input_text", text: `SYSTEM CONTEXT:\n${contextInfo}` }],
+        });
+      }
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const conversation = await (openai as any).conversations.create({
+        items: initialItems.length > 0 ? initialItems : undefined,
         metadata: {
           project_id: projectId || "",
           blueprint_id: blueprintId || "",
@@ -198,32 +222,18 @@ export async function POST(req: NextRequest) {
         .single();
 
       conversationId = newConv!.id;
-      console.log("[CHAT] Created new conversation:", conversationId);
+      console.log("[CHAT] Created new conversation with context:", conversationId);
     }
 
-    // Preparar el mensaje con contexto
-    const messageContent = contextInfo
+    // Preparar el mensaje (el contexto ya está en la conversación si es nueva)
+    // Solo incluir contexto si es una conversación existente que no lo tiene
+    const isExistingConversation = clientConversationId !== null;
+    const messageContent = isExistingConversation && contextInfo
       ? `${contextInfo}\n\n---\n\nUser Question: ${message}`
       : message;
 
-    // Preparar items para agregar a la conversación
-    const items = [
-      {
-        type: "message",
-        role: "user",
-        content: [{ type: "input_text", text: messageContent }],
-      },
-    ];
-
-    // Agregar items a la conversación
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (openai as any).conversations.items.create(openaiConversationId, {
-      items,
-    });
-
-    console.log("[CHAT] Message added to conversation");
-
     // Usar Responses API para generar la respuesta con el modelo y archivos
+    // La Responses API automáticamente agrega el input y output a la conversación
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const responseParams: any = {
       model: "gpt-5",
@@ -238,10 +248,7 @@ Key responsibilities:
 
 When referencing costs, always use the user's inventory data when available. Be concise but thorough in your responses.`,
       input: messageContent,
-      context: {
-        type: "conversation",
-        conversation_id: openaiConversationId,
-      },
+      conversation: openaiConversationId, // Vincula con la conversación existente
     };
 
     // Si hay archivos de blueprints, agregarlos como herramienta
@@ -256,6 +263,7 @@ When referencing costs, always use the user's inventory data when available. Be 
     }
 
     // Generar respuesta usando Responses API
+    console.log("[CHAT] Generating response with Responses API...");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const apiResponse = await (openai as any).responses.create(responseParams);
 
