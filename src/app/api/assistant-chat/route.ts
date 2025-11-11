@@ -147,20 +147,13 @@ export async function POST(req: NextRequest) {
         conversationId = existingConv.id;
         console.log("[CHAT] Using existing conversation:", openaiConversationId);
       } else {
-        // Si no existe, crear nueva conversación en OpenAI
+        // Si no existe, crear nueva conversación en OpenAI (sin model ni instructions)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const conversation = await (openai as any).conversations.create({
-          model: "gpt-5",
-          instructions: `You are an expert construction estimator and blueprint analyst. You help users understand their construction blueprints, provide cost estimates, identify discrepancies, and answer questions about their projects.
-
-Key responsibilities:
-- Answer questions about blueprint analyses
-- Provide cost estimates based on user's inventory
-- Explain technical details in clear language
-- Help identify potential issues or discrepancies
-- Suggest solutions and best practices
-
-When referencing costs, always use the user's inventory data when available. Be concise but thorough in your responses.`,
+          metadata: {
+            project_id: projectId || "",
+            blueprint_id: blueprintId || "",
+          },
         });
 
         openaiConversationId = conversation.id;
@@ -184,17 +177,10 @@ When referencing costs, always use the user's inventory data when available. Be 
       // Crear nueva conversación en OpenAI
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const conversation = await (openai as any).conversations.create({
-        model: "gpt-5",
-        instructions: `You are an expert construction estimator and blueprint analyst. You help users understand their construction blueprints, provide cost estimates, identify discrepancies, and answer questions about their projects.
-
-Key responsibilities:
-- Answer questions about blueprint analyses
-- Provide cost estimates based on user's inventory
-- Explain technical details in clear language
-- Help identify potential issues or discrepancies
-- Suggest solutions and best practices
-
-When referencing costs, always use the user's inventory data when available. Be concise but thorough in your responses.`,
+        metadata: {
+          project_id: projectId || "",
+          blueprint_id: blueprintId || "",
+        },
       });
 
       openaiConversationId = conversation.id;
@@ -220,56 +206,73 @@ When referencing costs, always use the user's inventory data when available. Be 
       ? `${contextInfo}\n\n---\n\nUser Question: ${message}`
       : message;
 
-    // Crear mensaje en la conversación con archivos adjuntos si existen
-    const messageParams: {
-      role: "user";
-      content: string;
-      attachments?: Array<{
-        file_id: string;
-        tools: Array<{ type: "file_search" }>;
-      }>;
-    } = {
-      role: "user",
-      content: messageContent,
-    };
+    // Preparar items para agregar a la conversación
+    const items = [
+      {
+        type: "message",
+        role: "user",
+        content: [{ type: "input_text", text: messageContent }],
+      },
+    ];
 
-    // Si hay archivos de blueprints, adjuntarlos al mensaje
-    if (blueprintFileIds.length > 0) {
-      messageParams.attachments = blueprintFileIds.map((fileId) => ({
-        file_id: fileId,
-        tools: [{ type: "file_search" }],
-      }));
-      console.log("[CHAT] Attaching blueprint files:", blueprintFileIds);
-    }
-
-    // Agregar mensaje a la conversación
+    // Agregar items a la conversación
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (openai as any).conversations.messages.create(
-      openaiConversationId,
-      messageParams
-    );
+    await (openai as any).conversations.items.create(openaiConversationId, {
+      items,
+    });
 
     console.log("[CHAT] Message added to conversation");
 
-    // Obtener los mensajes de la conversación
+    // Usar Responses API para generar la respuesta con el modelo y archivos
+    const responseParams: {
+      model: string;
+      instructions: string;
+      conversation_id: string;
+      tools?: Array<{ type: string; file_ids?: string[] }>;
+    } = {
+      model: "gpt-5",
+      instructions: `You are an expert construction estimator and blueprint analyst. You help users understand their construction blueprints, provide cost estimates, identify discrepancies, and answer questions about their projects.
+
+Key responsibilities:
+- Answer questions about blueprint analyses
+- Provide cost estimates based on user's inventory
+- Explain technical details in clear language
+- Help identify potential issues or discrepancies
+- Suggest solutions and best practices
+
+When referencing costs, always use the user's inventory data when available. Be concise but thorough in your responses.`,
+      conversation_id: openaiConversationId,
+    };
+
+    // Si hay archivos de blueprints, agregarlos como herramienta
+    if (blueprintFileIds.length > 0) {
+      responseParams.tools = [
+        {
+          type: "file_search",
+          file_ids: blueprintFileIds,
+        },
+      ];
+      console.log("[CHAT] Attaching blueprint files:", blueprintFileIds);
+    }
+
+    // Generar respuesta usando Responses API
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const conversationMessages = await (openai as any).conversations.messages.list(
-      openaiConversationId
-    );
+    const apiResponse = await (openai as any).responses.create(responseParams);
 
-    // Obtener la última respuesta del assistant
-    const lastMessage = conversationMessages.data.find(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (msg: any) => msg.role === "assistant"
-    );
+    console.log("[CHAT] Response generated");
 
-    // Extraer el contenido del mensaje
+    // Extraer el texto de la respuesta
     let reply = "No response generated.";
-    if (lastMessage?.content && Array.isArray(lastMessage.content)) {
+    if (apiResponse.output && Array.isArray(apiResponse.output)) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const textContent = lastMessage.content.find((c: any) => c.type === "text");
-      if (textContent?.text) {
-        reply = textContent.text;
+      const messageOutput = apiResponse.output.find((item: any) => item.type === "message");
+       
+      if (messageOutput?.content && Array.isArray(messageOutput.content)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const textContent = messageOutput.content.find((item: any) => item.type === "output_text");
+        if (textContent?.text) {
+          reply = textContent.text;
+        }
       }
     }
 
