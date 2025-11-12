@@ -21,7 +21,6 @@ export interface Contact {
   name: string;
   phone: string;
   email: string | null;
-  position: string | null;
   role: ContactRole | null;
   skills: ContactSkill[];
   hourly_rate: number | null;

@@ -13,12 +13,11 @@ export function useCreateCallDialog({
   onCallCreated,
 }: CreateCallDialogProps) {
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
-  const [fromNumber, setFromNumber] = useState<string>("");
   const [isCreating, setIsCreating] = useState(false);
 
   const handleCreateCall = async () => {
-    if (!selectedAgentId || !fromNumber || !contactPhone) {
-      toast.error("Please fill in all required fields");
+    if (!selectedAgentId || !contactPhone) {
+      toast.error("Please select an agent");
       return;
     }
 
@@ -29,7 +28,6 @@ export function useCreateCallDialog({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          from_number: fromNumber,
           to_number: contactPhone,
           agent_id: selectedAgentId,
           contact_id: contactId,
@@ -56,8 +54,6 @@ export function useCreateCallDialog({
   return {
     selectedAgentId,
     setSelectedAgentId,
-    fromNumber,
-    setFromNumber,
     isCreating,
     handleCreateCall,
   };

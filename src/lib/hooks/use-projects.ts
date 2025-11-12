@@ -1,23 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-
-interface Project {
-  id: string;
-  name: string;
-  clientName?: string;
-  address: string;
-  clientPhone?: string;
-  clientEmail?: string;
-  startDate?: string;
-  estimatedEndDate?: string;
-  estimatedBudget?: number;
-  description?: string;
-  status?: string;
-  completionPercentage?: number;
-  actualEndDate?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import type { Project, ProjectWithDetails } from "@/types/project";
 
 // Fetch projects
 export function useProjects() {
@@ -29,7 +12,7 @@ export function useProjects() {
         throw new Error("Failed to fetch projects");
       }
       const data = await response.json();
-      return data.projects as Project[];
+      return data.projects as ProjectWithDetails[];
     },
   });
 }
@@ -107,6 +90,61 @@ export function useUpdateProject() {
     },
     onError: (error: Error) => {
       toast.error(error.message);
+    },
+  });
+}
+
+// Update project status with optimistic updates (for Kanban)
+export function useUpdateProjectStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const response = await fetch(`/api/projects/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update project status");
+      }
+
+      return response.json();
+    },
+    // Optimistic update
+    onMutate: async ({ id, status }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["projects"] });
+
+      // Snapshot the previous value
+      const previousProjects = queryClient.getQueryData<ProjectWithDetails[]>(["projects"]);
+
+      // Optimistically update to the new value
+      if (previousProjects) {
+        queryClient.setQueryData<ProjectWithDetails[]>(
+          ["projects"],
+          previousProjects.map((project) =>
+            project.id === id ? { ...project, status } : project
+          )
+        );
+      }
+
+      // Return a context object with the snapshotted value
+      return { previousProjects };
+    },
+    // If the mutation fails, use the context returned from onMutate to roll back
+    onError: (error: Error, _variables, context) => {
+      if (context?.previousProjects) {
+        queryClient.setQueryData(["projects"], context.previousProjects);
+      }
+      toast.error(error.message);
+    },
+    // Always refetch after error or success to ensure we have the latest data
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"] });
     },
   });
 }

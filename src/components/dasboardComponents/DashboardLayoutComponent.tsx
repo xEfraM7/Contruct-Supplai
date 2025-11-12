@@ -119,7 +119,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
             </div>
 
-            <nav className="flex-1 p-4 overflow-y-auto mt-16 lg:mt-0">
+            <nav className="flex-1 p-4 overflow-y-auto custom-scrollbar mt-16 lg:mt-0">
               <ul className="space-y-2">
                 {navItems.map((item) => (
                   <li key={item.label}>
@@ -144,7 +144,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </aside>
 
           {/* Main Content */}
-          <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8 pt-20 lg:pt-8">
+          <main className="flex-1 overflow-auto custom-scrollbar p-4 sm:p-6 lg:p-8 pt-20 lg:pt-8">
             {children}
           </main>
         </div>

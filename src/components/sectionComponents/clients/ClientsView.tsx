@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Plus, Building2, Users, Phone, Mail, Loader2 } from "lucide-react";
+import { Plus, Building2, Phone, Mail, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CreateClientModal } from "./CreateClientModal";

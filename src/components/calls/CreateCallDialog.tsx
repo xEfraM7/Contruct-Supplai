@@ -16,12 +16,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, Phone } from "lucide-react";
 import { useCreateCallDialog } from "@/hooks/useCreateCallDialog";
 import { useAgents } from "@/lib/hooks/use-agents";
 import { CreateCallDialogProps } from "./types/call-types";
-
-
 
 export function CreateCallDialog({
   open,
@@ -36,8 +34,6 @@ export function CreateCallDialog({
   const {
     selectedAgentId,
     setSelectedAgentId,
-    fromNumber,
-    setFromNumber,
     isCreating,
     handleCreateCall,
   } = useCreateCallDialog({
@@ -59,16 +55,17 @@ export function CreateCallDialog({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>To Number</Label>
-            <Input value={contactPhone} disabled />
-          </div>
-
-          <div className="space-y-2">
-            <Label>From Number</Label>
-            <Input
-              placeholder="+1234567890"
-              value={fromNumber}
-              onChange={(e) => setFromNumber(e.target.value)}
-            />
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input 
+                value={contactPhone} 
+                disabled 
+                className="bg-muted/50 pl-10" 
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Contact phone number
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -95,6 +92,23 @@ export function CreateCallDialog({
                 )}
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">
+              Select the AI agent to handle this call
+            </p>
+          </div>
+
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <Phone className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-xs font-medium text-card-foreground">
+                  Calling from your configured number
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  The call will be made from your Retell phone number configured in settings
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
@@ -105,14 +119,17 @@ export function CreateCallDialog({
             >
               Cancel
             </Button>
-            <Button onClick={handleCreateCall} disabled={isCreating}>
+            <Button onClick={handleCreateCall} disabled={isCreating || !selectedAgentId}>
               {isCreating ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Creating...
                 </>
               ) : (
-                "Create Call"
+                <>
+                  <Phone className="w-4 h-4 mr-2" />
+                  Create Call
+                </>
               )}
             </Button>
           </div>

@@ -99,7 +99,7 @@ export function EquipmentTable({ equipment }: EquipmentTableProps) {
               No equipment found. Add your first equipment to get started.
             </div>
           ) : (
-            <div className="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0">
+            <div className="overflow-x-auto custom-scrollbar -mx-6 px-6 sm:mx-0 sm:px-0">
               <table className="w-full min-w-[900px]">
                 <thead>
                   <tr className="border-b border-border">

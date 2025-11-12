@@ -58,7 +58,6 @@ export function ContactProfileDialog({
       name: contact.name,
       phone: contact.phone,
       email: contact.email || '',
-      position: contact.position || '',
       role: contact.role || undefined,
       hourly_rate: contact.hourly_rate || undefined,
       hire_date: contact.hire_date || '',
@@ -84,7 +83,7 @@ export function ContactProfileDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto custom-scrollbar">
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
@@ -134,21 +133,13 @@ export function ContactProfileDialog({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <FormInput
-                  label="Email"
-                  type="email"
-                  {...register('email')}
-                  error={errors.email?.message}
-                  placeholder="john@example.com"
-                />
-                <FormInput
-                  label="Position"
-                  {...register('position')}
-                  error={errors.position?.message}
-                  placeholder="Project Manager"
-                />
-              </div>
+              <FormInput
+                label="Email"
+                type="email"
+                {...register('email')}
+                error={errors.email?.message}
+                placeholder="john@example.com"
+              />
 
               <div className="flex justify-end gap-2 pt-4">
                 <Button
