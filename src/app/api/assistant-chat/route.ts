@@ -251,15 +251,28 @@ When referencing costs, always use the user's inventory data when available. Be 
       conversation: openaiConversationId, // Vincula con la conversación existente
     };
 
-    // Si hay archivos de blueprints, agregarlos como herramienta
+    // Si hay archivos de blueprints, crear vector store y agregarlos como herramienta
     if (blueprintFileIds.length > 0) {
-      responseParams.tools = [
-        {
-          type: "file_search",
+      try {
+        // Crear vector store con los archivos
+        const vectorStore = await openai.vectorStores.create({
+          name: `Chat - ${openaiConversationId}`,
           file_ids: blueprintFileIds,
-        },
-      ];
-      console.log("[CHAT] Attaching blueprint files:", blueprintFileIds);
+        });
+
+        console.log("[CHAT] Vector store created:", vectorStore.id);
+
+        responseParams.tools = [
+          {
+            type: "file_search",
+            vector_store_ids: [vectorStore.id],
+          },
+        ];
+        console.log("[CHAT] Attaching blueprint files via vector store");
+      } catch (vectorError) {
+        console.error("[CHAT] Error creating vector store:", vectorError);
+        // Continuar sin archivos si falla
+      }
     }
 
     // Generar respuesta usando Responses API

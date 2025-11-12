@@ -59,7 +59,7 @@ export default function ProjectsMainComponent() {
               className={`h-9 px-4 transition-all ${
                 viewMode === "list" 
                   ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90" 
-                  : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+                  : "hover:bg-muted/50 text-muted-foreground"
               }`}
             >
               <LayoutList className="w-4 h-4 mr-2" />
@@ -72,7 +72,7 @@ export default function ProjectsMainComponent() {
               className={`h-9 px-4 transition-all ${
                 viewMode === "kanban" 
                   ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90" 
-                  : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+                  : "hover:bg-muted/50 text-muted-foreground "
               }`}
             >
               <LayoutGrid className="w-4 h-4 mr-2" />
