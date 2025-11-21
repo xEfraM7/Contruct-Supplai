@@ -41,7 +41,6 @@ import {
   useBlueprints,
   useAnalyses,
   useAnalyzeBlueprint,
-  ChatAssistant,
 } from "./index";
 
 export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
@@ -1125,12 +1124,6 @@ export function BlueprintComponent({ projectId }: BlueprintComponentProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Chat Assistant */}
-      <ChatAssistant
-        projectId={projectId}
-        blueprintId={selectedBlueprintForView || undefined}
-        analysisContext={analysisResult?.requested}
-      />
     </section>
   );
 }

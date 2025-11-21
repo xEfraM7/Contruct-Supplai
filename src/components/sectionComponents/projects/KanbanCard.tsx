@@ -132,11 +132,11 @@ export function KanbanCard({
         )}
 
         <div className="space-y-1.5 pt-1">
-          {(project.client || project.clientName) && (
+          {project.client && (
             <div className="flex items-center gap-1.5 text-xs bg-muted/20 rounded px-2 py-1">
               <User className="w-3 h-3 text-muted-foreground flex-shrink-0" />
               <span className="text-muted-foreground truncate text-[11px]">
-                {project.client?.company_name || project.clientName}
+                {project.client.company_name}
               </span>
             </div>
           )}

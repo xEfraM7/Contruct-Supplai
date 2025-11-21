@@ -4,9 +4,10 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 // GET /api/employees/[employeeId] - Fetch single employee with details
 export async function GET(
   request: Request,
-  { params }: { params: { employeeId: string } }
+  { params }: { params: Promise<{ employeeId: string }> }
 ) {
   try {
+    const { employeeId } = await params;
     const supabase = await createSupabaseServerClient();
     
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -19,7 +20,7 @@ export async function GET(
     const { data: employee, error: employeeError } = await supabase
       .from('employees')
       .select('*')
-      .eq('id', params.employeeId)
+      .eq('id', employeeId)
       .eq('user_id', user.id)
       .single();
 
@@ -40,7 +41,7 @@ export async function GET(
           company_name
         )
       `)
-      .eq('employee_manager_id', params.employeeId)
+      .eq('employee_manager_id', employeeId)
       .eq('user_id', user.id);
 
     if (projectsError) {
@@ -50,7 +51,11 @@ export async function GET(
     // Calculate stats
     const activeProjects = projects?.filter(p => p.status === 'active').length || 0;
     const totalProjects = projects?.length || 0;
-    const clients = [...new Set(projects?.map(p => p.clients?.company_name).filter(Boolean))] || [];
+    const clientNames = projects?.map(p => {
+      const client = Array.isArray(p.clients) ? p.clients[0] : p.clients;
+      return client?.company_name;
+    }).filter(Boolean) || [];
+    const clients = [...new Set(clientNames)];
 
     return NextResponse.json({
       employee: {
@@ -70,9 +75,10 @@ export async function GET(
 // PATCH /api/employees/[employeeId] - Update employee
 export async function PATCH(
   request: Request,
-  { params }: { params: { employeeId: string } }
+  { params }: { params: Promise<{ employeeId: string }> }
 ) {
   try {
+    const { employeeId } = await params;
     const supabase = await createSupabaseServerClient();
     
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -86,7 +92,7 @@ export async function PATCH(
     const { data: employee, error } = await supabase
       .from('employees')
       .update(body)
-      .eq('id', params.employeeId)
+      .eq('id', employeeId)
       .eq('user_id', user.id)
       .select()
       .single();
@@ -106,9 +112,10 @@ export async function PATCH(
 // DELETE /api/employees/[employeeId] - Delete employee
 export async function DELETE(
   request: Request,
-  { params }: { params: { employeeId: string } }
+  { params }: { params: Promise<{ employeeId: string }> }
 ) {
   try {
+    const { employeeId } = await params;
     const supabase = await createSupabaseServerClient();
     
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -120,7 +127,7 @@ export async function DELETE(
     const { error } = await supabase
       .from('employees')
       .delete()
-      .eq('id', params.employeeId)
+      .eq('id', employeeId)
       .eq('user_id', user.id);
 
     if (error) {

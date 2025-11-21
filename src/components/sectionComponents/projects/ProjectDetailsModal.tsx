@@ -66,7 +66,6 @@ export function ProjectDetailsModal({
   project,
   open,
   onOpenChange,
-  calculateProgress,
   getStatusColor,
 }: ProjectDetailsModalProps) {
   const [isEditing, setIsEditing] = useState(false);

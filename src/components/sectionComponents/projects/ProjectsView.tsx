@@ -126,7 +126,7 @@ export function ProjectsView({
                       <>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 pt-4 border-t border-border">
                           {/* Client Information */}
-                          {(project.client || project.clientName) && (
+                          {project.client && (
                             <div className="flex items-center gap-2 text-sm">
                               <User className="w-4 h-4 text-muted-foreground" />
                               <div>
@@ -134,7 +134,7 @@ export function ProjectsView({
                                   Client
                                 </p>
                                 <p className="font-medium text-card-foreground">
-                                  {project.client?.company_name || project.clientName}
+                                  {project.client.company_name}
                                 </p>
                                 {project.client?.company_email && (
                                   <p className="text-xs text-muted-foreground">
@@ -151,7 +151,7 @@ export function ProjectsView({
                           )}
 
                           {/* Project Manager Information */}
-                          {project.project_manager && (
+                          {project.employee_manager && (
                             <div className="flex items-center gap-2 text-sm">
                               <User className="w-4 h-4 text-primary" />
                               <div>
@@ -159,11 +159,11 @@ export function ProjectsView({
                                   Project Manager
                                 </p>
                                 <p className="font-medium text-card-foreground">
-                                  {project.project_manager.name}
+                                  {project.employee_manager.name}
                                 </p>
-                                {project.project_manager.email && (
+                                {project.employee_manager.email && (
                                   <p className="text-xs text-muted-foreground">
-                                    {project.project_manager.email}
+                                    {project.employee_manager.email}
                                   </p>
                                 )}
                               </div>

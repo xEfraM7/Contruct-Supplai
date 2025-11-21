@@ -17,9 +17,11 @@ export interface Project {
   
   // Budget tracking
   estimatedBudget?: number;
+  actual_cost?: number;
   
   // Progress
   status?: string;
+  completionPercentage?: number;
   
   // Timestamps
   createdAt: string;
