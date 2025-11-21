@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 import { useProjectsLogic } from "@/hooks/useProjectsLogic";
-import { ProjectsView } from "./ProjectsView";
 import { KanbanBoard } from "./KanbanBoard";
 import { ProjectDetailsModal } from "./ProjectDetailsModal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, LayoutList, LayoutGrid, FileText, DollarSign, Clock } from "lucide-react";
+import { Plus, LayoutGrid, FileText, Clock } from "lucide-react";
 import { CreateProjectModal } from "@/components/modals/CreateProjectModal";
 import type { ProjectWithDetails } from "@/types/project";
 
@@ -19,10 +18,6 @@ export default function ProjectsMainComponent() {
     metricsLoading,
     isModalOpen,
     setIsModalOpen,
-    expandedProjects,
-    viewMode,
-    setViewMode,
-    toggleProject,
     handleDeleteClick,
     handleStatusChange,
     calculateProgress,
@@ -51,34 +46,6 @@ export default function ProjectsMainComponent() {
           </p>
         </div>
         <div className="flex gap-3 flex-wrap sm:flex-nowrap items-center">
-          <div className="inline-flex items-center gap-1 border border-border rounded-lg p-1 bg-muted/50 shadow-sm h-11">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setViewMode("list")}
-              className={`h-9 px-4 transition-all ${
-                viewMode === "list" 
-                  ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90" 
-                  : "hover:bg-muted/50 text-muted-foreground"
-              }`}
-            >
-              <LayoutList className="w-4 h-4 mr-2" />
-              <span className="font-medium">List</span>
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setViewMode("kanban")}
-              className={`h-9 px-4 transition-all ${
-                viewMode === "kanban" 
-                  ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90" 
-                  : "hover:bg-muted/50 text-muted-foreground "
-              }`}
-            >
-              <LayoutGrid className="w-4 h-4 mr-2" />
-              <span className="font-medium">Kanban</span>
-            </Button>
-          </div>
           <Button
             onClick={() => setIsModalOpen(true)}
             className="h-11 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm transition-all"
@@ -102,10 +69,10 @@ export default function ProjectsMainComponent() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">
-                  Active Contracts
+                  Active Projects
                 </p>
                 <p className="text-3xl font-bold text-card-foreground">
-                  {metricsLoading ? "..." : metrics?.activeContracts ?? 0}
+                  {metricsLoading ? "..." : metrics?.activeProjects ?? 0}
                 </p>
                 <p className="text-xs mt-2 text-muted-foreground">
                   Currently active projects
@@ -123,19 +90,19 @@ export default function ProjectsMainComponent() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">
-                  Total Budget
+                  Total Equipment
                 </p>
                 <p className="text-3xl font-bold text-card-foreground">
                   {metricsLoading
                     ? "..."
-                    : `${(metrics?.totalBudget ?? 0).toLocaleString()}`}
+                    : `${(metrics?.totalEquipment ?? 0).toLocaleString()}`}
                 </p>
                 <p className="text-xs mt-2 text-muted-foreground">
-                  Combined active projects budget
+                  Registered equipment items
                 </p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-primary" />
+                <LayoutGrid className="w-6 h-6 text-primary" />
               </div>
             </div>
           </CardContent>
@@ -146,13 +113,13 @@ export default function ProjectsMainComponent() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">
-                  On Time Delivery
+                  Pending Tasks
                 </p>
                 <p className="text-3xl font-bold text-card-foreground">
-                  {metricsLoading ? "..." : `${metrics?.onTimeDelivery ?? 0}%`}
+                  {metricsLoading ? "..." : `${metrics?.pendingTasks ?? 0}`}
                 </p>
                 <p className="text-xs mt-2 text-muted-foreground">
-                  Completed projects delivered on time
+                  Tasks pending or in progress
                 </p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -179,16 +146,6 @@ export default function ProjectsMainComponent() {
             </Card>
           ))}
         </div>
-      ) : viewMode === "list" ? (
-        <ProjectsView
-          projects={projects}
-          isLoading={isLoading}
-          expandedProjects={expandedProjects}
-          onToggleProject={toggleProject}
-          onDeleteClick={handleDeleteClick}
-          calculateProgress={calculateProgress}
-          getStatusColor={getStatusColor}
-        />
       ) : (
         <KanbanBoard
           projects={projects}

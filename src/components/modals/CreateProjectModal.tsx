@@ -11,7 +11,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { FormInput, FormTextarea, FormDateInput, FormSelect } from "@/components/form";
+import { FormInput, FormTextarea } from "@/components/form";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -19,7 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 import { projectSchema, type ProjectFormData } from "@/lib/validations/project";
 import { useCreateProject } from "@/lib/hooks/use-projects";
 import { useClients } from "@/lib/hooks/use-clients";
@@ -69,6 +69,7 @@ export function CreateProjectModal({
     try {
       const result = await createProject.mutateAsync({
         ...data,
+        status: 'on_hold', // Always create with on_hold status
         estimated_budget: data.estimated_budget ? Number(data.estimated_budget) : undefined,
       });
 
@@ -185,56 +186,6 @@ export function CreateProjectModal({
               error={errors.address?.message}
               disabled={isSubmitting}
               {...register("address")}
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormDateInput
-                id="startDate"
-                label="Start Date"
-                required
-                error={errors.start_date?.message}
-                disabled={isSubmitting}
-                {...register("start_date")}
-              />
-
-              <FormDateInput
-                id="estimatedEndDate"
-                label="Estimated End Date"
-                required
-                error={errors.estimated_end_date?.message}
-                disabled={isSubmitting}
-                {...register("estimated_end_date")}
-              />
-            </div>
-
-            <FormInput
-              id="estimatedBudget"
-              label="Estimated Budget"
-              type="number"
-              step="0.01"
-              placeholder="Enter budget"
-              error={errors.estimated_budget?.message}
-              disabled={isSubmitting}
-              {...register("estimated_budget", { valueAsNumber: true })}
-            />
-
-            <Controller
-              name="status"
-              control={control}
-              render={({ field }) => (
-                <FormSelect
-                  label="Status"
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  error={errors.status?.message}
-                  options={[
-                    { value: 'active', label: 'Active' },
-                    { value: 'completed', label: 'Completed' },
-                    { value: 'on_hold', label: 'On Hold' },
-                    { value: 'cancelled', label: 'Cancelled' },
-                  ]}
-                />
-              )}
             />
 
             <FormTextarea

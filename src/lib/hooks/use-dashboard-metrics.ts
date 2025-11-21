@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 
 interface DashboardMetrics {
-  activeContracts: number;
-  totalBudget: number;
-  onTimeDelivery: number;
+  activeProjects: number;
+  totalEquipment: number;
+  pendingTasks: number;
 }
 
 // Fetch dashboard metrics

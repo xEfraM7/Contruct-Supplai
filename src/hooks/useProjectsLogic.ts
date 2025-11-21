@@ -6,31 +6,14 @@ import { useDashboardMetrics } from "@/lib/hooks/use-dashboard-metrics";
 import { useConfirm } from "@/hooks/use-confirm";
 import type { ProjectWithDetails } from "@/types/project";
 
-type ViewMode = "list" | "kanban";
-
 export function useProjectsLogic() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
   const { confirm, ConfirmDialog } = useConfirm();
 
   const { data: metrics, isLoading: metricsLoading } = useDashboardMetrics();
   const { data: projects = [], isLoading } = useProjects();
   const deleteProject = useDeleteProject();
   const updateProjectStatus = useUpdateProjectStatus();
-
-  const toggleProject = (projectId: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    setExpandedProjects((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(projectId)) {
-        newSet.delete(projectId);
-      } else {
-        newSet.add(projectId);
-      }
-      return newSet;
-    });
-  };
 
   const handleDeleteClick = async (project: ProjectWithDetails, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -100,10 +83,6 @@ export function useProjectsLogic() {
     metricsLoading,
     isModalOpen,
     setIsModalOpen,
-    expandedProjects,
-    viewMode,
-    setViewMode,
-    toggleProject,
     handleDeleteClick,
     handleStatusChange,
     calculateProgress,

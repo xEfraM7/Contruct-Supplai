@@ -12,10 +12,10 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get active contracts count
-    const { data: activeProjects, error: activeError } = await supabase
+    // Get active projects count
+    const { count: activeProjectsCount, error: activeError } = await supabase
       .from('project')
-      .select('id, estimated_budget, start_date, estimated_end_date, actual_end_date, status')
+      .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id)
       .eq('status', 'active');
 
@@ -24,41 +24,33 @@ export async function GET() {
       return NextResponse.json({ error: "Failed to fetch active projects" }, { status: 500 });
     }
 
-    // Calculate total budget from active projects
-    const totalBudget = activeProjects?.reduce((sum, project) => {
-      return sum + (Number(project.estimated_budget) || 0);
-    }, 0) || 0;
+    // Get total equipment count
+    const { count: equipmentCount, error: equipmentError } = await supabase
+      .from('equipment')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id);
 
-    // Get completed projects for on-time delivery calculation
-    const { data: completedProjects, error: completedError } = await supabase
-      .from('project')
-      .select('estimated_end_date, actual_end_date')
-      .eq('user_id', user.id)
-      .eq('status', 'completed')
-      .not('estimated_end_date', 'is', null)
-      .not('actual_end_date', 'is', null);
-
-    if (completedError) {
-      console.error('Error fetching completed projects:', completedError);
-      return NextResponse.json({ error: "Failed to fetch completed projects" }, { status: 500 });
+    if (equipmentError) {
+      console.error('Error fetching equipment:', equipmentError);
+      return NextResponse.json({ error: "Failed to fetch equipment" }, { status: 500 });
     }
 
-    // Calculate on-time delivery percentage
-    let onTimeDelivery = 0;
-    if (completedProjects && completedProjects.length > 0) {
-      const onTimeCount = completedProjects.filter(project => {
-        const estimatedDate = new Date(project.estimated_end_date);
-        const actualDate = new Date(project.actual_end_date);
-        return actualDate <= estimatedDate;
-      }).length;
-      
-      onTimeDelivery = Math.round((onTimeCount / completedProjects.length) * 100);
+    // Get pending tasks count
+    const { count: pendingTasksCount, error: tasksError } = await supabase
+      .from('contact_tasks')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .in('status', ['pending', 'in_progress']);
+
+    if (tasksError) {
+      console.error('Error fetching tasks:', tasksError);
+      return NextResponse.json({ error: "Failed to fetch tasks" }, { status: 500 });
     }
 
     return NextResponse.json({
-      activeContracts: activeProjects?.length || 0,
-      totalBudget,
-      onTimeDelivery,
+      activeProjects: activeProjectsCount || 0,
+      totalEquipment: equipmentCount || 0,
+      pendingTasks: pendingTasksCount || 0,
     });
 
   } catch (error) {

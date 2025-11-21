@@ -6,17 +6,17 @@ export const projectSchema = z.object({
   description: z.string().optional(),
   
   // Client linking
-  client_id: z.string().uuid("Invalid client").optional(),
+  client_id: z.string().uuid("Invalid client"),
   
   // Project Manager
   project_manager_id: z.string().uuid("Invalid project manager").optional(),
   
-  // Dates
-  start_date: z.string().min(1, "Start date is required"),
-  estimated_end_date: z.string().min(1, "Estimated end date is required"),
+  // Dates - optional for creation, can be added later
+  start_date: z.string().optional(),
+  estimated_end_date: z.string().optional(),
   actual_end_date: z.string().optional(),
   
-  // Budget
+  // Budget - optional for creation
   estimated_budget: z.number().min(0).optional(),
   actual_cost: z.number().min(0).optional(),
   
