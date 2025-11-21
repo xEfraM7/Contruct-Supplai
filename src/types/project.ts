@@ -5,13 +5,10 @@ export interface Project {
   description?: string;
   
   // Client linking
-  client_id?: string;
-  clientName?: string; // Deprecated: for backward compatibility
-  clientPhone?: string; // Deprecated
-  clientEmail?: string; // Deprecated
+  client_id: string;
   
-  // Project Manager
-  project_manager_id?: string;
+  // Employee Manager
+  employee_manager_id?: string;
   
   // Dates
   startDate?: string;
@@ -20,11 +17,9 @@ export interface Project {
   
   // Budget tracking
   estimatedBudget?: number;
-  actual_cost?: number;
   
   // Progress
   status?: string;
-  completionPercentage?: number;
   
   // Timestamps
   createdAt: string;
@@ -38,10 +33,10 @@ export interface ProjectWithDetails extends Project {
     company_email: string | null;
     company_phone: string | null;
   };
-  project_manager?: {
+  employee_manager?: {
     id: string;
     name: string;
     email: string | null;
-    role: string | null;
+    phone: string;
   };
 }

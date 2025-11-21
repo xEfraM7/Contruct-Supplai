@@ -6,10 +6,10 @@ export const projectSchema = z.object({
   description: z.string().optional(),
   
   // Client linking
-  client_id: z.string().uuid("Invalid client"),
+  client_id: z.string().min(1, "Client is required").uuid("Invalid client"),
   
-  // Project Manager
-  project_manager_id: z.string().uuid("Invalid project manager").optional(),
+  // Employee Manager
+  employee_manager_id: z.string().uuid("Invalid employee manager").optional().or(z.literal("")),
   
   // Dates - optional for creation, can be added later
   start_date: z.string().optional(),
@@ -18,11 +18,9 @@ export const projectSchema = z.object({
   
   // Budget - optional for creation
   estimated_budget: z.number().min(0).optional(),
-  actual_cost: z.number().min(0).optional(),
   
   // Progress
   status: z.enum(['active', 'completed', 'on_hold', 'cancelled']).optional(),
-  completion_percentage: z.number().min(0).max(100).optional(),
 });
 
 export type ProjectFormData = z.infer<typeof projectSchema>;

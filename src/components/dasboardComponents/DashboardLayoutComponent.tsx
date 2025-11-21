@@ -13,6 +13,7 @@ import {
   Calendar,
   Menu,
   X,
+  UserCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouter, usePathname } from "next/navigation";
@@ -29,6 +30,7 @@ const navItems = [
   { icon: Package, label: "Products", path: "/equipment" },
   { icon: Bot, label: "AI Agents", path: "/agents" },
   { icon: Users, label: "Clients", path: "/clients" },
+  { icon: UserCog, label: "Employees", path: "/employees" },
   { icon: BarChart3, label: "Analytics", path: "/analytics" },
   { icon: Settings, label: "Settings", path: "/settings" },
 ];

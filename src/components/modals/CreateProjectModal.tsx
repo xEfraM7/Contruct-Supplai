@@ -23,7 +23,7 @@ import {
 import { projectSchema, type ProjectFormData } from "@/lib/validations/project";
 import { useCreateProject } from "@/lib/hooks/use-projects";
 import { useClients } from "@/lib/hooks/use-clients";
-import { useProjectManagers } from "@/lib/hooks/use-project-managers";
+import { useEmployees } from "@/lib/hooks/use-employees";
 import { CreateProjectModalProps } from "./types/modal-types";
 
 export function CreateProjectModal({
@@ -34,7 +34,7 @@ export function CreateProjectModal({
   const router = useRouter();
   const createProject = useCreateProject();
   const { data: clients = [] } = useClients();
-  const { data: allContacts = [] } = useProjectManagers();
+  const { data: employees = [] } = useEmployees();
 
   const {
     register,
@@ -42,28 +42,18 @@ export function CreateProjectModal({
     formState: { errors, isSubmitting },
     reset,
     control,
-    watch,
-    setValue,
   } = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
     mode: "onBlur",
     reValidateMode: "onChange",
+    defaultValues: {
+      client_id: "",
+      employee_manager_id: "",
+    },
   });
 
-  // Watch the selected client
-  const selectedClientId = watch('client_id');
-
-  // Filter project managers based on selected client and role
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const availableProjectManagers = allContacts.filter((contact: any) => {
-    return contact.client_id === selectedClientId && contact.role === 'project_manager';
-  });
-
-  // Reset project manager when client changes
-  const handleClientChange = (clientId: string) => {
-    setValue('client_id', clientId);
-    setValue('project_manager_id', undefined);
-  };
+  // All employees can be project managers
+  const projectManagers = employees;
 
   const onSubmit = async (data: ProjectFormData) => {
     try {
@@ -71,6 +61,7 @@ export function CreateProjectModal({
         ...data,
         status: 'on_hold', // Always create with on_hold status
         estimated_budget: data.estimated_budget ? Number(data.estimated_budget) : undefined,
+        employee_manager_id: data.employee_manager_id || undefined,
       });
 
       reset();
@@ -116,7 +107,7 @@ export function CreateProjectModal({
                 render={({ field }) => (
                   <Select
                     value={field.value}
-                    onValueChange={handleClientChange}
+                    onValueChange={field.onChange}
                     disabled={isSubmitting}
                   >
                     <SelectTrigger>
@@ -138,28 +129,25 @@ export function CreateProjectModal({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="project_manager_id">Project Manager</Label>
+              <Label htmlFor="employee_manager_id">Project Manager</Label>
               <Controller
-                name="project_manager_id"
+                name="employee_manager_id"
                 control={control}
                 render={({ field }) => (
                   <Select
                     value={field.value}
                     onValueChange={field.onChange}
-                    disabled={isSubmitting || !selectedClientId}
+                    disabled={isSubmitting}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder={
-                        !selectedClientId 
-                          ? "Select a client first" 
-                          : availableProjectManagers.length === 0
+                        projectManagers.length === 0
                           ? "No project managers available"
                           : "Select a project manager (optional)"
                       } />
                     </SelectTrigger>
                     <SelectContent>
-                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                      {availableProjectManagers.map((pm: any) => (
+                      {projectManagers.map((pm) => (
                         <SelectItem key={pm.id} value={pm.id}>
                           {pm.name}
                         </SelectItem>
@@ -168,12 +156,12 @@ export function CreateProjectModal({
                   </Select>
                 )}
               />
-              {errors.project_manager_id && (
-                <p className="text-sm text-red-600">{errors.project_manager_id.message}</p>
+              {errors.employee_manager_id && (
+                <p className="text-sm text-red-600">{errors.employee_manager_id.message}</p>
               )}
-              {selectedClientId && availableProjectManagers.length === 0 && (
+              {projectManagers.length === 0 && (
                 <p className="text-sm text-muted-foreground">
-                  No project managers found for this client. Add a contact with &quot;Project Manager&quot; role first.
+                  No employees found. Add an employee in the Employees section.
                 </p>
               )}
             </div>

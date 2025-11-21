@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { FormInput, FormTextarea, FormDateInput, FormSelect } from "@/components/form";
 import {
   Select,
@@ -25,7 +24,6 @@ import { Label } from "@/components/ui/label";
 import {
   User,
   Calendar,
-  DollarSign,
   MapPin,
   FileText,
   ArrowRight,
@@ -39,7 +37,7 @@ import { formatDate, getDateStatus } from "@/lib/utils/dateUtils";
 import { projectSchema, type ProjectFormData } from "@/lib/validations/project";
 import { useUpdateProject } from "@/lib/hooks/use-projects";
 import { useClients } from "@/lib/hooks/use-clients";
-import { useProjectManagers } from "@/lib/hooks/use-project-managers";
+import { useEmployees } from "@/lib/hooks/use-employees";
 
 interface ProjectDetailsModalProps {
   project: ProjectWithDetails | null;
@@ -74,7 +72,7 @@ export function ProjectDetailsModal({
   const [isEditing, setIsEditing] = useState(false);
   const updateProject = useUpdateProject();
   const { data: clients = [] } = useClients();
-  const { data: allContacts = [] } = useProjectManagers();
+  const { data: employees = [] } = useEmployees();
 
   const {
     register,
@@ -82,40 +80,30 @@ export function ProjectDetailsModal({
     formState: { errors, isSubmitting },
     reset,
     control,
-    watch,
-    setValue,
   } = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
     mode: "onBlur",
     reValidateMode: "onChange",
-    defaultValues: project ? {
-      name: project.name,
-      address: project.address,
-      description: project.description || "",
-      client_id: project.client_id,
-      project_manager_id: project.project_manager_id || undefined,
-      start_date: project.startDate || "",
-      estimated_end_date: project.estimatedEndDate || "",
-      estimated_budget: project.estimatedBudget || undefined,
-      status: (project.status || 'on_hold') as 'active' | 'completed' | 'on_hold' | 'cancelled',
-    } : undefined,
   });
+
+  // Update form values when project changes
+  useEffect(() => {
+    if (project) {
+      reset({
+        name: project.name,
+        address: project.address,
+        description: project.description || "",
+        client_id: project.client_id,
+        employee_manager_id: project.employee_manager_id || "",
+        start_date: project.startDate || "",
+        estimated_end_date: project.estimatedEndDate || "",
+        estimated_budget: project.estimatedBudget || undefined,
+        status: (project.status || 'on_hold') as 'active' | 'completed' | 'on_hold' | 'cancelled',
+      });
+    }
+  }, [project, reset]);
 
   if (!project) return null;
-
-  const progress = calculateProgress(project);
-  const selectedClientId = watch('client_id');
-
-  // Filter project managers based on selected client
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const availableProjectManagers = allContacts.filter((contact: any) => {
-    return contact.client_id === selectedClientId && contact.role === 'project_manager';
-  });
-
-  const handleClientChange = (clientId: string) => {
-    setValue('client_id', clientId);
-    setValue('project_manager_id', undefined);
-  };
 
   const onSubmit = async (formData: ProjectFormData) => {
     try {
@@ -124,6 +112,7 @@ export function ProjectDetailsModal({
         data: {
           ...formData,
           estimated_budget: formData.estimated_budget ? Number(formData.estimated_budget) : undefined,
+          employee_manager_id: formData.employee_manager_id || undefined,
         },
       });
       setIsEditing(false);
@@ -183,7 +172,7 @@ export function ProjectDetailsModal({
                 render={({ field }) => (
                   <Select
                     value={field.value}
-                    onValueChange={handleClientChange}
+                    onValueChange={field.onChange}
                     disabled={isSubmitting}
                   >
                     <SelectTrigger>
@@ -205,38 +194,40 @@ export function ProjectDetailsModal({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="project_manager_id">Project Manager</Label>
+              <Label htmlFor="employee_manager_id">Project Manager</Label>
               <Controller
-                name="project_manager_id"
+                name="employee_manager_id"
                 control={control}
                 render={({ field }) => (
                   <Select
                     value={field.value}
                     onValueChange={field.onChange}
-                    disabled={isSubmitting || !selectedClientId}
+                    disabled={isSubmitting}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder={
-                        !selectedClientId 
-                          ? "Select a client first" 
-                          : availableProjectManagers.length === 0
-                          ? "No project managers available"
+                        employees.length === 0
+                          ? "No employees available"
                           : "Select a project manager (optional)"
                       } />
                     </SelectTrigger>
                     <SelectContent>
-                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                      {availableProjectManagers.map((pm: any) => (
-                        <SelectItem key={pm.id} value={pm.id}>
-                          {pm.name}
+                      {employees.map((emp) => (
+                        <SelectItem key={emp.id} value={emp.id}>
+                          {emp.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 )}
               />
-              {errors.project_manager_id && (
-                <p className="text-sm text-red-600">{errors.project_manager_id.message}</p>
+              {errors.employee_manager_id && (
+                <p className="text-sm text-red-600">{errors.employee_manager_id.message}</p>
+              )}
+              {employees.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  No employees found. Add an employee in the Employees section.
+                </p>
               )}
             </div>
 
@@ -338,7 +329,7 @@ export function ProjectDetailsModal({
           </div>
 
           {/* Client Information */}
-          {(project.client || project.clientName) && (
+          {project.client && (
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <User className="w-5 h-5 text-primary" />
@@ -346,14 +337,14 @@ export function ProjectDetailsModal({
               <div className="flex-1">
                 <p className="text-sm font-medium text-muted-foreground mb-1">Client</p>
                 <p className="text-base font-medium text-card-foreground">
-                  {project.client?.company_name || project.clientName}
+                  {project.client.company_name}
                 </p>
-                {project.client?.company_email && (
+                {project.client.company_email && (
                   <p className="text-sm text-muted-foreground mt-1">
                     {project.client.company_email}
                   </p>
                 )}
-                {project.client?.company_phone && (
+                {project.client.company_phone && (
                   <p className="text-sm text-muted-foreground">
                     {project.client.company_phone}
                   </p>
@@ -362,8 +353,8 @@ export function ProjectDetailsModal({
             </div>
           )}
 
-          {/* Project Manager */}
-          {project.project_manager && (
+          {/* Employee Manager */}
+          {project.employee_manager && (
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <User className="w-5 h-5 text-primary" />
@@ -373,16 +364,16 @@ export function ProjectDetailsModal({
                   Project Manager
                 </p>
                 <p className="text-base font-medium text-card-foreground">
-                  {project.project_manager.name}
+                  {project.employee_manager.name}
                 </p>
-                {project.project_manager.email && (
+                {project.employee_manager.email && (
                   <p className="text-sm text-muted-foreground mt-1">
-                    {project.project_manager.email}
+                    {project.employee_manager.email}
                   </p>
                 )}
-                {project.project_manager.role && (
+                {project.employee_manager.phone && (
                   <p className="text-sm text-muted-foreground">
-                    {project.project_manager.role}
+                    {project.employee_manager.phone}
                   </p>
                 )}
               </div>

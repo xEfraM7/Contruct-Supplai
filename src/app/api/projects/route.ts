@@ -39,7 +39,7 @@ export async function GET() {
       .select(`
         *,
         clients(id, company_name, company_email, company_phone),
-        project_manager:contacts!project_manager_id(id, name, email, role)
+        employee_manager:employees!employee_manager_id(id, name, email, phone)
       `)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
@@ -59,18 +59,13 @@ export async function GET() {
         address: p.address,
         description: p.description,
         
-        // Client data (new)
+        // Client data
         client_id: p.client_id,
         client: p.clients,
         
-        // Project Manager (new)
-        project_manager_id: p.project_manager_id,
-        project_manager: p.project_manager,
-        
-        // Legacy fields (for backward compatibility)
-        clientName: p.client_name || p.clients?.company_name,
-        clientPhone: p.client_phone || p.clients?.company_phone,
-        clientEmail: p.client_email || p.clients?.company_email,
+        // Employee Manager
+        employee_manager_id: p.employee_manager_id,
+        employee_manager: p.employee_manager,
         
         // Dates
         startDate: p.start_date,
@@ -138,13 +133,11 @@ export async function POST(request: Request) {
         address: body.address,
         description: body.description || null,
         client_id: body.client_id || null,
-        project_manager_id: body.project_manager_id || null,
+        employee_manager_id: body.employee_manager_id || null,
         start_date: body.start_date || null,
         estimated_end_date: body.estimated_end_date || null,
         estimated_budget: body.estimated_budget || null,
         status: body.status || 'active',
-        completion_percentage: 0,
-        actual_cost: 0,
         user_id: user.id,
       })
       .select()

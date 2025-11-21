@@ -69,8 +69,6 @@ export function ClientDetailComponent() {
     phone: "",
     email: "",
     role: "",
-    hourly_rate: "",
-    hire_date: "",
   });
   const [selectedContactForCall, setSelectedContactForCall] = useState<Contact | null>(null);
   const [selectedContactForHistory, setSelectedContactForHistory] = useState<Contact | null>(null);
@@ -85,11 +83,10 @@ export function ClientDetailComponent() {
     try {
       await createContact.mutateAsync({
         ...contactForm,
-        hourly_rate: contactForm.hourly_rate ? parseFloat(contactForm.hourly_rate) : undefined,
         role: contactForm.role || undefined,
       });
       setIsAddContactOpen(false);
-      setContactForm({ name: "", phone: "", email: "", role: "", hourly_rate: "", hire_date: "" });
+      setContactForm({ name: "", phone: "", email: "", role: "" });
     } catch (error) {
       console.error("Error creating contact:", error);
     }
@@ -298,11 +295,6 @@ export function ClientDetailComponent() {
                           {contact.role.replace('_', ' ')}
                         </Badge>
                       )}
-                      {contact.hourly_rate && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          ${contact.hourly_rate}/hr
-                        </p>
-                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -418,30 +410,6 @@ export function ClientDetailComponent() {
                   <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Hourly Rate</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="35.00"
-                  value={contactForm.hourly_rate}
-                  onChange={(e) =>
-                    setContactForm({ ...contactForm, hourly_rate: e.target.value })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Hire Date</Label>
-                <Input
-                  type="date"
-                  value={contactForm.hire_date}
-                  onChange={(e) =>
-                    setContactForm({ ...contactForm, hire_date: e.target.value })
-                  }
-                />
-              </div>
             </div>
             <div className="flex justify-end gap-2 pt-4">
               <Button
